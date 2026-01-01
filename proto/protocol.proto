@@ -1,0 +1,37 @@
+// protocol.proto
+
+syntax = "proto3";
+
+option go_package = "github.com/ecstasoy/RPCinGo/pkg/protocol/pb";
+
+package protocol;
+
+message Metadata {
+  map<string, string> data = 1;
+}
+
+message Request {
+  uint64 id = 1;
+  string service = 2;
+  string method = 3;
+  string service_version = 4;
+  bytes args = 5;
+  int64 timeout = 6;
+  bool is_stream = 7;
+  map<string, string> metadata = 8;
+  int64 created_at = 9;
+}
+
+message Error {
+  int32 code = 1;
+  string message = 2;
+  string details = 3;
+}
+
+message Response {
+  uint64 id = 1;
+  bytes data = 2;
+  Error error = 3;
+  map<string, string> metadata = 4;
+  int64 server_time = 5;
+}
