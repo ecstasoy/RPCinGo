@@ -233,5 +233,5 @@ func (c *ProtobufCodec) Name() string {
 }
 
 func init() {
-	Register(CodecTypeProtobuf, NewProtobufCodec())
+	Register(protocol.CodecTypeProtobuf, NewProtobufCodec())
 }
