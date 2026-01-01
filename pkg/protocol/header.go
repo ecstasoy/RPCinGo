@@ -36,7 +36,7 @@ type CodecType byte
 const (
 	CodecTypeJSON     CodecType = 0x00
 	CodecTypeProtobuf CodecType = 0x01
-	// CodecTypeMsgpack CodecType = 0x02
+	CodecTypeMsgPack  CodecType = 0x02
 )
 
 func (t CodecType) String() string {

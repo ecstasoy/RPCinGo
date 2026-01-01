@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"sync"
+
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 )
 
 type Codec interface {
@@ -19,35 +21,14 @@ type StreamCodec interface {
 	DecodeFromReader(r io.Reader, v interface{}) error
 }
 
-type CodecType byte
-
-const (
-	CodecTypeJSON     CodecType = 0x00
-	CodecTypeProtobuf CodecType = 0x01
-	CodecTypeMsgPack  CodecType = 0x02
-)
-
-func (t CodecType) String() string {
-	switch t {
-	case CodecTypeJSON:
-		return "json"
-	case CodecTypeProtobuf:
-		return "protobuf"
-	case CodecTypeMsgPack:
-		return "msgpack"
-	default:
-		return fmt.Sprintf("unknown(%d)", t)
-	}
-}
-
 var registry = struct {
-	codecs map[CodecType]Codec
+	codecs map[protocol.CodecType]Codec
 	sync.RWMutex
 }{
-	codecs: make(map[CodecType]Codec),
+	codecs: make(map[protocol.CodecType]Codec),
 }
 
-func Register(typ CodecType, codec Codec) {
+func Register(typ protocol.CodecType, codec Codec) {
 	registry.Lock()
 	defer registry.Unlock()
 
@@ -62,26 +43,26 @@ func Register(typ CodecType, codec Codec) {
 	registry.codecs[typ] = codec
 }
 
-func Get(typ CodecType) Codec {
+func Get(typ protocol.CodecType) Codec {
 	registry.RLock()
 	defer registry.RUnlock()
 
 	return registry.codecs[typ]
 }
 
-func GetOrDefault(typ CodecType) Codec {
+func GetOrDefault(typ protocol.CodecType) Codec {
 	codec := Get(typ)
 	if codec == nil {
-		codec = Get(CodecTypeJSON)
+		codec = Get(protocol.CodecTypeJSON)
 	}
 	return codec
 }
 
-func List() []CodecType {
+func List() []protocol.CodecType {
 	registry.RLock()
 	defer registry.RUnlock()
 
-	types := make([]CodecType, 0, len(registry.codecs))
+	types := make([]protocol.CodecType, 0, len(registry.codecs))
 	for typ := range registry.codecs {
 		types = append(types, typ)
 	}
