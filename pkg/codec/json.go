@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 )
 
 type JSONCodec struct{}
@@ -46,5 +48,5 @@ func (c *JSONCodec) Name() string {
 }
 
 func init() {
-	Register(CodecTypeJSON, NewJSONCodec())
+	Register(protocol.CodecTypeJSON, NewJSONCodec())
 }
