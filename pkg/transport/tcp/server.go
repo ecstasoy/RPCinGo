@@ -169,6 +169,18 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) error {
 		if err != nil {
 			return err
 		}
+
+		if s.opts.ReadBufferSize > 0 {
+			if err := tcpConn.SetReadBuffer(s.opts.ReadBufferSize); err != nil {
+				return fmt.Errorf("set read buffer size failed: %w", err)
+			}
+		}
+
+		if s.opts.WriteBufferSize > 0 {
+			if err := tcpConn.SetWriteBuffer(s.opts.WriteBufferSize); err != nil {
+				return fmt.Errorf("set write buffer size failed: %w", err)
+			}
+		}
 	}
 
 	for {
