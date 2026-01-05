@@ -45,6 +45,8 @@ func (t CodecType) String() string {
 		return "json"
 	case CodecTypeProtobuf:
 		return "protobuf"
+	case CodecTypeMsgPack:
+		return "msgpack"
 	default:
 		return fmt.Sprintf("unknown(%d)", t)
 	}
