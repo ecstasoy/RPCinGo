@@ -34,14 +34,10 @@ func init() {
 }
 
 func Metrics() Interceptor {
-	return func(ctx context.Context, req interface{}, invoker Invoker) (interface{}, error) {
+	return func(ctx context.Context, req *protocol.Request, invoker Invoker) (any, error) {
 		start := time.Now()
 
 		var service, method string
-		if r, ok := req.(*protocol.Request); ok {
-			service = r.Service
-			method = r.Method
-		}
 
 		resp, err := invoker(ctx, req)
 

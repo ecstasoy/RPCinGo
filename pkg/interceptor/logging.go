@@ -29,15 +29,10 @@ func Logging(logger Logger) Interceptor {
 		logger = &defaultLogger{}
 	}
 
-	return func(ctx context.Context, req interface{}, invoker Invoker) (interface{}, error) {
+	return func(ctx context.Context, req *protocol.Request, invoker Invoker) (any, error) {
 		start := time.Now()
 
 		var service, method string
-		if r, ok := req.(*protocol.Request); ok {
-			service = r.Service
-			method = r.Method
-		}
-
 		logger.Infof("→ RPC call: [%s.%s]", service, method)
 
 		resp, err := invoker(ctx, req)
