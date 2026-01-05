@@ -190,7 +190,13 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) error {
 			return fmt.Errorf("read request failed: %w", err)
 		}
 
-		reqCtx, cancel := context.WithTimeout(ctx, s.opts.WriteTimeout)
+		if s.opts.MaxRequestBodySize > 0 && int64(header.BodyLength) > s.opts.MaxRequestBodySize {
+			resp := protocol.NewErrorResponse(header.RequestID, protocol.NewError(protocol.ErrorRequestEntityTooLarge, "request body too large"))
+			if err := s.codec.WriteResponse(conn, resp); err != nil {
+				return fmt.Errorf("write error response failed: %w", err)
+			}
+			continue
+		}
 
 		if s.reqSemaphore != nil {
 			select {
@@ -206,7 +212,9 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) error {
 			}
 		}
 
-		respData, err := s.handler(reqCtx, reqData)
+		reqCtx, cancel := context.WithTimeout(ctx, s.opts.WriteTimeout)
+
+		resp, handlerErr := s.handler(reqCtx, req)
 		cancel()
 
 		if s.reqSemaphore != nil {
