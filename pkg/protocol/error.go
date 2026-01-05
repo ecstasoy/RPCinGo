@@ -18,6 +18,7 @@ const (
 	ErrorCodeAlreadyExists     = 6
 	ErrorCodePermissionDenied  = 7
 	ErrorCodeResourceExhausted = 8
+	ErrorRequestEntityTooLarge = 9
 	ErrorCodeInternal          = 13
 	ErrorCodeUnavailable       = 14
 )
