@@ -197,7 +197,7 @@ func (c *Client) IsConnected() bool {
 }
 
 func (c *Client) LocalAddr() net.Addr {
-	c.mu.RUnlock()
+	c.mu.RLock()
 	defer c.mu.RUnlock()
 
 	if c.conn != nil {
