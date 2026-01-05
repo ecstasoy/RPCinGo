@@ -42,15 +42,22 @@ func (m Metadata) ToMap() map[string]string {
 	if m == nil {
 		return nil
 	}
-	return map[string]string(m)
+	out := make(map[string]string, len(m))
+	for k, v := range m {
+		out[k] = v
+	}
+	return out
 }
 
 func FromMap(data map[string]string) Metadata {
 	if data == nil {
 		return nil
 	}
-
-	return Metadata(data)
+	out := make(Metadata, len(data))
+	for k, v := range data {
+		out[k] = v
+	}
+	return out
 }
 
 func (m Metadata) Merge(other Metadata) {
