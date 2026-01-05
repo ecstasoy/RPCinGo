@@ -81,10 +81,8 @@ func (c *Client) Dial(ctx context.Context, address string) error {
 		}
 
 		if err := tcpConn.SetNoDelay(true); err != nil {
-			err := conn.Close()
-			if err != nil {
-				return fmt.Errorf("set no delay failed: %w", err)
-			}
+			_ = conn.Close()
+			return fmt.Errorf("set no delay failed: %w", err)
 		}
 	}
 
