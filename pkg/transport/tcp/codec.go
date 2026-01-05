@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/ecstasoy/RPCinGo/pkg/codec"
-	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"RPCinGo/pkg/codec"
+	"RPCinGo/pkg/protocol"
 )
 
 type ProtocolCodec struct {
