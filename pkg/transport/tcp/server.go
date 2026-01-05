@@ -29,6 +29,8 @@ type Server struct {
 	totalConnections  int64
 	// semaphore to limit max concurrent connections
 	connSemaphore chan struct{}
+	// semaphore to limit max concurrent requests
+	reqSemaphore chan struct{}
 }
 
 func NewServer(
@@ -49,6 +51,10 @@ func NewServer(
 
 	if opts.MaxConnections > 0 {
 		server.connSemaphore = make(chan struct{}, opts.MaxConnections)
+	}
+
+	if opts.MaxConcurrentRequests > 0 {
+		server.reqSemaphore = make(chan struct{}, opts.MaxConcurrentRequests)
 	}
 
 	return server
@@ -186,28 +192,29 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) error {
 
 		reqCtx, cancel := context.WithTimeout(ctx, s.opts.WriteTimeout)
 
-		reqData, err := s.codec.codec.Encode(req)
-		if err != nil {
-			cancel()
-			err := s.sendErrorResponse(conn, header.RequestID,
-				protocol.NewError(protocol.ErrorCodeInternal, "encode request failed"))
-			if err != nil {
-				return fmt.Errorf("send error response failed: %w", err)
+		if s.reqSemaphore != nil {
+			select {
+			case s.reqSemaphore <- struct{}{}:
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+				resp := protocol.NewErrorResponse(header.RequestID, protocol.NewError(protocol.ErrorCodeUnavailable, "too many concurrent requests"))
+				if err := s.codec.WriteResponse(conn, resp); err != nil {
+					return fmt.Errorf("write error response failed: %w", err)
+				}
+				continue
 			}
-			continue
 		}
 
 		respData, err := s.handler(reqCtx, reqData)
 		cancel()
 
-		var resp *protocol.Response
-		if err != nil {
-			resp = protocol.NewErrorResponse(header.RequestID, protocol.NewError(protocol.ErrorCodeInternal, err.Error()))
-		} else {
-			resp = &protocol.Response{}
-			if err := s.codec.codec.Decode(respData, resp); err != nil {
-				resp = protocol.NewErrorResponse(header.RequestID, protocol.NewError(protocol.ErrorCodeInternal, fmt.Sprintf("decode response data failed: %v", err)))
-			}
+		if s.reqSemaphore != nil {
+			<-s.reqSemaphore
+		}
+
+		if handlerErr != nil {
+			resp = protocol.NewErrorResponse(header.RequestID, protocol.NewError(protocol.ErrorCodeInternal, handlerErr.Error()))
 		}
 
 		if s.opts.WriteTimeout > 0 {
