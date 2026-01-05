@@ -165,12 +165,12 @@ func (pc *ProtocolCodec) ReadRequest(r io.Reader) (*protocol.Header, *protocol.R
 	}
 
 	if header.MsgType != protocol.MsgTypeRequest {
-		return nil, nil, fmt.Errorf("message type error, expected %s, got %s", protocol.MsgTypeResponse, header.MsgType)
+		return nil, nil, fmt.Errorf("message type error, expected %s, got %s", protocol.MsgTypeRequest, header.MsgType)
 	}
 
 	req, err := pc.DecodeRequest(bodyData)
 	if err != nil {
-		return nil, nil, fmt.Errorf("decode response error: %w", err)
+		return nil, nil, fmt.Errorf("decode request error: %w", err)
 	}
 
 	return header, req, nil
@@ -183,12 +183,12 @@ func (pc *ProtocolCodec) ReadResponse(r io.Reader) (*protocol.Header, *protocol.
 	}
 
 	if header.MsgType != protocol.MsgTypeResponse {
-		return nil, nil, fmt.Errorf("message type error, expected %s, got %s", protocol.MsgTypeRequest, header.MsgType)
+		return nil, nil, fmt.Errorf("message type error, expected %s, got %s", protocol.MsgTypeResponse, header.MsgType)
 	}
 
 	resp, err := pc.DecodeResponse(bodyData)
 	if err != nil {
-		return nil, nil, fmt.Errorf("decode request error: %w", err)
+		return nil, nil, fmt.Errorf("decode response error: %w", err)
 	}
 
 	return header, resp, nil
