@@ -70,10 +70,8 @@ func (c *Client) Dial(ctx context.Context, address string) error {
 	if tcpConn, ok := conn.(*net.TCPConn); ok {
 		if c.opts.KeepAlive {
 			if err := tcpConn.SetKeepAlive(true); err != nil {
-				err := conn.Close()
-				if err != nil {
-					return fmt.Errorf("set keep-alive failed: %w", err)
-				}
+				_ = conn.Close()
+				return fmt.Errorf("set keep-alive failed: %w", err)
 			}
 
 			if err := tcpConn.SetKeepAlivePeriod(c.opts.KeepAlivePeriod); err != nil {
