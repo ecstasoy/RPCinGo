@@ -10,8 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ecstasoy/RPCinGo/pkg/protocol"
-	"github.com/ecstasoy/RPCinGo/pkg/transport"
+	"RPCinGo/pkg/protocol"
+	"RPCinGo/pkg/transport"
 )
 
 type Server struct {
