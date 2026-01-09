@@ -7,7 +7,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"RPCinGo/pkg/protocol"
 )
 
 type Codec interface {
