@@ -5,7 +5,8 @@ package server
 import (
 	"time"
 
-	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"RPCinGo/pkg/protocol"
+	"RPCinGo/pkg/registry"
 )
 
 type serverOptions struct {
@@ -16,6 +17,13 @@ type serverOptions struct {
 	writeTimeout   time.Duration
 	maxConcurrent  int
 	workerPoolSize int
+
+	// Registry options
+	serviceName       string
+	serviceVersion    string
+	registry          registry.Registry
+	enableRegistry    bool
+	heartbeatInterval time.Duration
 }
 
 func defaultServerOptions() *serverOptions {
@@ -27,6 +35,9 @@ func defaultServerOptions() *serverOptions {
 		writeTimeout:   10 * time.Second,
 		maxConcurrent:  0,
 		workerPoolSize: 8,
+
+		enableRegistry:    false,
+		heartbeatInterval: 5 * time.Second,
 	}
 }
 
@@ -56,5 +67,20 @@ func WithConcurrency(maxConcurrent, workerPoolSize int) Option {
 	return func(o *serverOptions) {
 		o.maxConcurrent = maxConcurrent
 		o.workerPoolSize = workerPoolSize
+	}
+}
+
+func WithRegistry(serviceName, version string, reg registry.Registry) Option {
+	return func(o *serverOptions) {
+		o.serviceName = serviceName
+		o.serviceVersion = version
+		o.registry = reg
+		o.enableRegistry = true
+	}
+}
+
+func WithHeartbeatInterval(interval time.Duration) Option {
+	return func(o *serverOptions) {
+		o.heartbeatInterval = interval
 	}
 }
