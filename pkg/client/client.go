@@ -1,17 +1,43 @@
 package client
 
 import (
+	"RPCinGo/pkg/circuitbreaker"
 	"context"
+	"encoding/json"
 	"fmt"
+	"sync"
 
-	"github.com/ecstasoy/RPCinGo/pkg/protocol"
-	"github.com/ecstasoy/RPCinGo/pkg/transport/tcp"
+	"RPCinGo/pkg/codec"
+	"RPCinGo/pkg/loadbalancer"
+	"RPCinGo/pkg/pool"
+	"RPCinGo/pkg/protocol"
+	"RPCinGo/pkg/registry"
+
+	"google.golang.org/protobuf/proto"
 )
 
 type Client struct {
-	pool     *tcp.ConnectionPool
-	codec    protocol.CodecType
-	compress protocol.CompressType
+	opts *clientOptions
+
+	poolManager  *pool.PoolManager
+	discovery    registry.Discovery
+	loadBalancer loadbalancer.LoadBalancer
+
+	instanceCache map[string][]*registry.ServiceInstance
+	cacheMu       sync.RWMutex
+
+	watchers map[string]registry.Watcher
+	watchMu  sync.Mutex
+
+	// Fixed mode (single instance)
+	fixedPool *pool.ConnectionPool
+	fixedMode bool
+
+	breakers  map[string]*circuitbreaker.CircuitBreaker
+	breakerMu sync.RWMutex
+	breakerOn bool
+
+	codec codec.Codec
 }
 
 func NewClient(address string, opts ...Option) (*Client, error) {
@@ -20,20 +46,45 @@ func NewClient(address string, opts ...Option) (*Client, error) {
 		o(options)
 	}
 
-	pool, err := tcp.NewConnectionPool(
+	pool, err := pool.NewConnectionPool(
 		address,
-		tcp.WithPoolSize(options.maxConnections, options.minConnections),
-		tcp.WithPoolCodec(options.codecType, options.compressType),
-		tcp.WithIdleTimeout(options.idleTimeout),
+		pool.WithPoolSize(options.maxConnections, options.minConnections),
+		pool.WithPoolCodec(options.codecType, options.compressType),
+		pool.WithIdleTimeout(options.idleTimeout),
 	)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Client{
-		pool:     pool,
-		codec:    options.codecType,
-		compress: options.compressType,
+		opts:      options,
+		fixedPool: pool,
+		fixedMode: true,
+		codec:     codec.Get(options.codecType),
+	}, nil
+}
+
+func NewDiscoveryClient(opts ...Option) (*Client, error) {
+	options := defaultOptions()
+	for _, o := range opts {
+		o(options)
+	}
+
+	if options.discovery == nil {
+		return nil, fmt.Errorf("discovery is required")
+	}
+
+	return &Client{
+		opts:          options,
+		poolManager:   pool.NewPoolManager(options.codecType, options.compressType),
+		discovery:     options.discovery,
+		loadBalancer:  options.loadBalancer,
+		instanceCache: make(map[string][]*registry.ServiceInstance),
+		watchers:      make(map[string]registry.Watcher),
+		breakers:      make(map[string]*circuitbreaker.CircuitBreaker),
+		breakerOn:     options.enableCircuitBreaker,
+		fixedMode:     false,
+		codec:         codec.Get(options.codecType),
 	}, nil
 }
 

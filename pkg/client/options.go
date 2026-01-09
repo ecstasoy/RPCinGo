@@ -3,7 +3,9 @@ package client
 import (
 	"time"
 
-	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"RPCinGo/pkg/loadbalancer"
+	"RPCinGo/pkg/protocol"
+	"RPCinGo/pkg/registry"
 )
 
 type clientOptions struct {
@@ -13,6 +15,11 @@ type clientOptions struct {
 	minConnections int
 	idleTimeout    time.Duration
 	callTimeout    time.Duration
+
+	discovery            registry.Discovery
+	loadBalancer         loadbalancer.LoadBalancer
+	enableWatch          bool
+	enableCircuitBreaker bool
 }
 
 func defaultOptions() *clientOptions {
@@ -23,6 +30,10 @@ func defaultOptions() *clientOptions {
 		minConnections: 10,
 		idleTimeout:    90 * time.Second,
 		callTimeout:    5 * time.Second,
+
+		loadBalancer:         loadbalancer.NewRoundRobin(),
+		enableWatch:          true,
+		enableCircuitBreaker: true,
 	}
 }
 
@@ -45,5 +56,29 @@ func WithPoolSize(max, min int) Option {
 func WithTimeout(timeout time.Duration) Option {
 	return func(o *clientOptions) {
 		o.callTimeout = timeout
+	}
+}
+
+func WithDiscovery(discovery registry.Discovery) Option {
+	return func(o *clientOptions) {
+		o.discovery = discovery
+	}
+}
+
+func WithLoadBalancer(lb loadbalancer.LoadBalancer) Option {
+	return func(o *clientOptions) {
+		o.loadBalancer = lb
+	}
+}
+
+func WithWatch(enable bool) Option {
+	return func(o *clientOptions) {
+		o.enableWatch = enable
+	}
+}
+
+func WithCircuitBreaker(enable bool) Option {
+	return func(o *clientOptions) {
+		o.enableCircuitBreaker = enable
 	}
 }
