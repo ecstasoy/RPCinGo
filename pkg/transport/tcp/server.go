@@ -281,16 +281,6 @@ func (s *Server) CloseConnection(conn net.Conn) error {
 	return nil
 }
 
-func (s *Server) sendErrorResponse(conn net.Conn, requestID uint64, error *protocol.Error) error {
-	resp := protocol.NewErrorResponse(requestID, error)
-	err := s.codec.WriteResponse(conn, resp)
-	if err != nil {
-		return fmt.Errorf("send error response failed: %w", err)
-	}
-
-	return nil
-}
-
 func (s *Server) Close() error {
 	s.mu.Lock()
 
