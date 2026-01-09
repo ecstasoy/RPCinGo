@@ -152,6 +152,7 @@ func (c *ProtobufCodec) requestToProto(req *protocol.Request) (*pb.Request, erro
 		IsStream:       req.IsStream,
 		Metadata:       metadata,
 		CreatedAt:      req.CreatedAt,
+		ArgsCodec:      argsCodec,
 	}, nil
 }
 
@@ -163,13 +164,10 @@ func (c *ProtobufCodec) protoToRequest(pbReq *pb.Request, req *protocol.Request)
 	req.Timeout = pbReq.Timeout
 	req.IsStream = pbReq.IsStream
 	req.CreatedAt = pbReq.CreatedAt
+	req.ArgsCodec = pbReq.ArgsCodec
 
 	if len(pbReq.Args) > 0 {
-		var args interface{}
-		if err := json.Unmarshal(pbReq.Args, &args); err != nil {
-			return fmt.Errorf("unmarshal args failed: %w", err)
-		}
-		req.Args = args
+		req.Args = pbReq.Args
 	}
 
 	if pbReq.Metadata != nil {
