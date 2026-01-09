@@ -4,7 +4,9 @@ package tcp
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -199,6 +201,9 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) error {
 
 		header, req, err := s.codec.ReadRequest(conn)
 		if err != nil {
+			if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+				return nil
+			}
 			return fmt.Errorf("read request failed: %w", err)
 		}
 
