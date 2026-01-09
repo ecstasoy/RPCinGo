@@ -10,6 +10,14 @@ import (
 	"RPCinGo/pkg/protocol"
 )
 
+// ProtocolCodec handles RPC protocol framing with protocol.Header.
+//
+// Framing responsibility:
+//   - ProtocolCodec: Uses protocol.Header (20-byte fixed header + BodyLength field)
+//   - codec.Codec: Encodes/decodes Request/Response to/from bytes (no framing)
+//   - codec.StreamCodec: Independent framing (NOT used by ProtocolCodec)
+//
+// DO NOT mix ProtocolCodec with codec.StreamCodec's framing.
 type ProtocolCodec struct {
 	codec        codec.Codec
 	compressor   codec.Compressor

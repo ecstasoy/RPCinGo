@@ -287,6 +287,10 @@ func (c *ProtobufCodec) protoToResponse(pbResp *pb.Response, resp *protocol.Resp
 	return nil
 }
 
+// EncodeToWriter implements StreamCodec interface.
+//
+// IMPORTANT: This method uses 4-byte length prefix framing.
+// DO NOT use with transport/tcp/codec.ProtocolCodec which already has protocol.Header framing.
 func (c *ProtobufCodec) EncodeToWriter(w io.Writer, v interface{}) error {
 	data, err := c.Encode(v)
 	if err != nil {
@@ -307,6 +311,10 @@ func (c *ProtobufCodec) EncodeToWriter(w io.Writer, v interface{}) error {
 	return nil
 }
 
+// DecodeFromReader implements StreamCodec interface.
+//
+// IMPORTANT: This method expects 4-byte length prefix framing.
+// DO NOT use with transport/tcp/codec.ProtocolCodec which uses protocol.Header framing.
 func (c *ProtobufCodec) DecodeFromReader(r io.Reader, v interface{}) error {
 	lengthBuf := make([]byte, 4)
 	if _, err := io.ReadFull(r, lengthBuf); err != nil {
