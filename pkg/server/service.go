@@ -87,12 +87,12 @@ func (sr *ServiceRegistry) GetHandler(service, method string) (MethodHandler, er
 
 	svc, exists := sr.services[service]
 	if !exists {
-		return nil, fmt.Errorf("service %s not found", service)
+		return nil, fmt.Errorf("%w: service=%s", registry.ErrNotFound, service)
 	}
 
 	handler, ok := svc.GetMethod(method)
 	if !ok {
-		return nil, fmt.Errorf("method %s not found in service %s", method, service)
+		return nil, fmt.Errorf("%w: service=%s method=%s", registry.ErrNotFound, service, method)
 	}
 
 	return handler, nil
