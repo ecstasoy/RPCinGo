@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ecstasoy/RPCinGo/pkg/protocol"
-	"github.com/ecstasoy/RPCinGo/pkg/transport"
+	"RPCinGo/pkg/protocol"
+	"RPCinGo/pkg/transport"
 )
 
 type Client struct {
@@ -134,7 +134,7 @@ func (c *Client) Send(ctx context.Context, data []byte) ([]byte, error) {
 		}
 	}
 
-	if _, err := conn.Write(data); err != nil {
+	if err := writeFull(conn, data); err != nil {
 		return nil, fmt.Errorf("write to connection failed: %w", err)
 	}
 
@@ -246,4 +246,15 @@ func (c *Client) SendWithRetry(ctx context.Context, data []byte) ([]byte, error)
 	}
 
 	return nil, fmt.Errorf("send failed after %d retries: %w", c.opts.MaxRetries, lastErr)
+}
+
+func writeFull(w net.Conn, b []byte) error {
+	for len(b) > 0 {
+		n, err := w.Write(b)
+		if err != nil {
+			return err
+		}
+		b = b[n:]
+	}
+	return nil
 }
