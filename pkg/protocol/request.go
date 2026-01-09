@@ -4,18 +4,30 @@ import (
 	"fmt"
 	"sync/atomic"
 	"time"
+
+	"RPCinGo/pkg/protocol/pb"
+)
+
+type PayloadCodec = pb.PayloadCodec
+
+const (
+	PayloadCodecUnknown  = pb.PayloadCodec_PAYLOAD_CODEC_UNKNOWN
+	PayloadCodecRaw      = pb.PayloadCodec_PAYLOAD_CODEC_RAW
+	PayloadCodecJSON     = pb.PayloadCodec_PAYLOAD_CODEC_JSON
+	PayloadCodecProtobuf = pb.PayloadCodec_PAYLOAD_CODEC_PROTOBUF
 )
 
 type Request struct {
-	ID             uint64      `json:"id"`
-	Service        string      `json:"service"`
-	Method         string      `json:"method"`
-	ServiceVersion string      `json:"service_version,omitempty"`
-	Args           interface{} `json:"args"`
-	Timeout        int64       `json:"timeout,omitempty"`
-	IsStream       bool        `json:"is_stream,omitempty"`
-	Metadata       Metadata    `json:"metadata,omitempty"`
-	CreatedAt      int64       `json:"created_at,omitempty"`
+	ID             uint64       `json:"id"`
+	Service        string       `json:"service"`
+	Method         string       `json:"method"`
+	ServiceVersion string       `json:"service_version,omitempty"`
+	Args           interface{}  `json:"args"`
+	Timeout        int64        `json:"timeout,omitempty"`
+	IsStream       bool         `json:"is_stream,omitempty"`
+	Metadata       Metadata     `json:"metadata,omitempty"`
+	CreatedAt      int64        `json:"created_at,omitempty"`
+	ArgsCodec      PayloadCodec `json:"args_codec,omitempty"`
 }
 
 var requestIDCounter uint64

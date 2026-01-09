@@ -6,6 +6,13 @@ option go_package = "github.com/ecstasoy/RPCinGo/pkg/protocol/pb";
 
 package protocol;
 
+enum PayloadCodec {
+  PAYLOAD_CODEC_UNKNOWN = 0;
+  PAYLOAD_CODEC_RAW = 1;
+  PAYLOAD_CODEC_JSON = 2;
+  PAYLOAD_CODEC_PROTOBUF = 3;
+}
+
 message Metadata {
   map<string, string> data = 1;
 }
@@ -20,6 +27,7 @@ message Request {
   bool is_stream = 7;
   map<string, string> metadata = 8;
   int64 created_at = 9;
+  PayloadCodec args_codec = 10;
 }
 
 message Error {

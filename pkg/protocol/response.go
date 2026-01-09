@@ -6,11 +6,12 @@ import (
 )
 
 type Response struct {
-	ID         uint64      `json:"id"`
-	Data       interface{} `json:"data,omitempty"`
-	Error      *Error      `json:"error,omitempty"`
-	Metadata   Metadata    `json:"metadata,omitempty"`
-	ServerTime int64       `json:"server_time,omitempty"`
+	ID         uint64       `json:"id"`
+	Data       interface{}  `json:"data,omitempty"`
+	Error      *Error       `json:"error,omitempty"`
+	Metadata   Metadata     `json:"metadata,omitempty"`
+	ServerTime int64        `json:"server_time,omitempty"`
+	DataCodec  PayloadCodec `json:"data_codec,omitempty"`
 }
 
 func NewResponse(requestID uint64) *Response {

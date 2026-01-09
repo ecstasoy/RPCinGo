@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/ecstasoy/RPCinGo/pkg/protocol"
-	"github.com/ecstasoy/RPCinGo/pkg/protocol/pb"
+	"RPCinGo/pkg/protocol"
+	"RPCinGo/pkg/protocol/pb"
+
 	"google.golang.org/protobuf/proto"
 )
 
@@ -78,11 +79,61 @@ func (c *ProtobufCodec) Decode(data []byte, v interface{}) error {
 
 func (c *ProtobufCodec) requestToProto(req *protocol.Request) (*pb.Request, error) {
 	var argsData []byte
+	var argsCodec pb.PayloadCodec
 	var err error
 	if req.Args != nil {
-		argsData, err = json.Marshal(req.Args)
-		if err != nil {
-			return nil, fmt.Errorf("marshal args failed: %w", err)
+		// Determine ArgsCodec and marshal Args accordingly
+		// If ArgsCodec is specified, use it. Otherwise, infer from Args type.
+		if req.ArgsCodec != protocol.PayloadCodecUnknown {
+			argsCodec = req.ArgsCodec
+
+			switch req.ArgsCodec {
+			case protocol.PayloadCodecRaw:
+				if argBytes, ok := req.Args.([]byte); ok {
+					argsData = argBytes
+				} else {
+					return nil, fmt.Errorf("ArgsCodec is RAW but Args is not []byte (got %T)", req.Args)
+				}
+			case protocol.PayloadCodecJSON:
+				if argBytes, ok := req.Args.([]byte); ok {
+					argsData = argBytes
+				} else {
+					argsData, err = json.Marshal(req.Args)
+					if err != nil {
+						return nil, fmt.Errorf("marshal args as JSON failed: %w", err)
+					}
+				}
+			case protocol.PayloadCodecProtobuf:
+				if argBytes, ok := req.Args.([]byte); ok {
+					argsData = argBytes
+				} else if protoMsg, ok := req.Args.(proto.Message); ok {
+					argsData, err = proto.Marshal(protoMsg)
+					if err != nil {
+						return nil, fmt.Errorf("marshal args as Protobuf failed: %w", err)
+					}
+				} else {
+					return nil, fmt.Errorf("ArgsCodec is PROTOBUF but Args is not proto.Message or []byte (got %T)", req.Args)
+				}
+			default:
+				return nil, fmt.Errorf("unsupported ArgsCodec: %v", req.ArgsCodec)
+			}
+		} else {
+			if argBytes, ok := req.Args.([]byte); ok {
+				argsData = argBytes
+				argsCodec = pb.PayloadCodec_PAYLOAD_CODEC_RAW
+			} else if protoMsg, ok := req.Args.(proto.Message); ok {
+				argsData, err = proto.Marshal(protoMsg)
+				if err != nil {
+					return nil, fmt.Errorf("marshal args failed: %w", err)
+				}
+				argsCodec = pb.PayloadCodec_PAYLOAD_CODEC_PROTOBUF
+			} else {
+				argsData, err = json.Marshal(req.Args)
+				if err != nil {
+					return nil, fmt.Errorf("marshal args failed: %w", err)
+				}
+				argsCodec = pb.PayloadCodec_PAYLOAD_CODEC_JSON
+			}
 		}
 	}
 
@@ -136,13 +187,66 @@ func (c *ProtobufCodec) responseToProto(resp *protocol.Response) (*pb.Response, 
 		ServerTime: resp.ServerTime,
 	}
 
+	var dataCodec pb.PayloadCodec
+	var err error
+
 	if resp.Data != nil {
-		dataBytes, err := json.Marshal(resp.Data)
-		if err != nil {
-			return nil, fmt.Errorf("marshal data failed: %w", err)
+		// Determine ArgsCodec and marshal Args accordingly
+		// If ArgsCodec is specified, use it. Otherwise, infer from Args type.
+		if resp.DataCodec != protocol.PayloadCodecUnknown {
+			dataCodec = resp.DataCodec
+
+			switch resp.DataCodec {
+			case protocol.PayloadCodecRaw:
+				if dataBytes, ok := resp.Data.([]byte); ok {
+					pbResp.Data = dataBytes
+				} else {
+					return nil, fmt.Errorf("DataCodec is RAW but Data is not []byte (got %T)", resp.Data)
+				}
+			case protocol.PayloadCodecJSON:
+				if dataBytes, ok := resp.Data.([]byte); ok {
+					pbResp.Data = dataBytes
+				} else {
+					pbResp.Data, err = json.Marshal(resp.Data)
+					if err != nil {
+						return nil, fmt.Errorf("marshal data as JSON failed: %w", err)
+					}
+				}
+			case protocol.PayloadCodecProtobuf:
+				if dataBytes, ok := resp.Data.([]byte); ok {
+					pbResp.Data = dataBytes
+				} else if protoMsg, ok := resp.Data.(proto.Message); ok {
+					pbResp.Data, err = proto.Marshal(protoMsg)
+					if err != nil {
+						return nil, fmt.Errorf("marshal data as Protobuf failed: %w", err)
+					}
+				} else {
+					return nil, fmt.Errorf("DataCodec is PROTOBUF but Data is not proto.Message or []byte (got %T)", resp.Data)
+				}
+			default:
+				return nil, fmt.Errorf("unsupported DataCodec: %v", resp.DataCodec)
+			}
+		} else {
+			if dataBytes, ok := resp.Data.([]byte); ok {
+				pbResp.Data = dataBytes
+				dataCodec = pb.PayloadCodec_PAYLOAD_CODEC_RAW
+			} else if protoMsg, ok := resp.Data.(proto.Message); ok {
+				pbResp.Data, err = proto.Marshal(protoMsg)
+				if err != nil {
+					return nil, fmt.Errorf("marshal data failed: %w", err)
+				}
+				dataCodec = pb.PayloadCodec_PAYLOAD_CODEC_PROTOBUF
+			} else {
+				pbResp.Data, err = json.Marshal(resp.Data)
+				if err != nil {
+					return nil, fmt.Errorf("marshal data failed: %w", err)
+				}
+				dataCodec = pb.PayloadCodec_PAYLOAD_CODEC_JSON
+			}
 		}
-		pbResp.Data = dataBytes
 	}
+
+	pbResp.DataCodec = dataCodec
 
 	if resp.Error != nil {
 		pbResp.Error = &pb.Error{
@@ -162,13 +266,10 @@ func (c *ProtobufCodec) responseToProto(resp *protocol.Response) (*pb.Response, 
 func (c *ProtobufCodec) protoToResponse(pbResp *pb.Response, resp *protocol.Response) error {
 	resp.ID = pbResp.Id
 	resp.ServerTime = pbResp.ServerTime
+	resp.DataCodec = pbResp.DataCodec
 
 	if len(pbResp.Data) > 0 {
-		var data interface{}
-		if err := json.Unmarshal(pbResp.Data, &data); err != nil {
-			return fmt.Errorf("unmarshal data failed: %w", err)
-		}
-		resp.Data = data
+		resp.Data = pbResp.Data
 	}
 
 	if pbResp.Error != nil {
