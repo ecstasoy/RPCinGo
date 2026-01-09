@@ -42,4 +42,5 @@ message Response {
   Error error = 3;
   map<string, string> metadata = 4;
   int64 server_time = 5;
+  PayloadCodec data_codec = 6;
 }
