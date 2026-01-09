@@ -23,10 +23,26 @@ func NewJSONCodec() Codec {
 }
 
 func (c *JSONCodec) Encode(v interface{}) ([]byte, error) {
+	if req, ok := v.(*protocol.Request); ok {
+		return c.encodeRequest(req)
+	}
+
+	if resp, ok := v.(*protocol.Response); ok {
+		return c.encodeResponse(resp)
+	}
+
 	return json.Marshal(v)
 }
 
 func (c *JSONCodec) Decode(data []byte, v interface{}) error {
+	if req, ok := v.(*protocol.Request); ok {
+		return c.decodeRequest(data, req)
+	}
+
+	if resp, ok := v.(*protocol.Response); ok {
+		return c.decodeResponse(data, resp)
+	}
+
 	return json.Unmarshal(data, v)
 }
 
