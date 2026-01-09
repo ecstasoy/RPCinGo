@@ -53,11 +53,11 @@ func (c *ProtobufCodec) Decode(data []byte, v interface{}) error {
 	if req, ok := v.(*protocol.Request); ok {
 		pbReq := &pb.Request{}
 		if err := proto.Unmarshal(data, pbReq); err != nil {
-			return fmt.Errorf("unmarshal proto response failed: %w", err)
+			return fmt.Errorf("unmarshal proto request failed: %w", err)
 		}
 
 		if err := c.protoToRequest(pbReq, req); err != nil {
-			return fmt.Errorf("convert proto to response failed: %w", err)
+			return fmt.Errorf("convert proto to request failed: %w", err)
 		}
 		return nil
 	}
