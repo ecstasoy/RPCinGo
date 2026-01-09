@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"RPCinGo/pkg/protocol"
 )
 
 type Compressor interface {
