@@ -3,11 +3,15 @@
 package server
 
 import (
+	"RPCinGo/pkg/protocol"
+	"RPCinGo/pkg/registry"
+	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 )
 
-type MethodHandler func(args interface{}) (interface{}, error)
+type MethodHandler func(ctx context.Context, req *protocol.Request) (interface{}, error)
 
 type Service struct {
 	name    string

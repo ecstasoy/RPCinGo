@@ -19,6 +19,8 @@ type Server struct {
 	codec     codec.Codec
 }
 
+type Invoker func(ctx context.Context, req *protocol.Request) (any, error)
+
 func NewServer(opts ...Option) *Server {
 	options := defaultServerOptions()
 	for _, o := range opts {
@@ -55,17 +57,29 @@ func (s *Server) Start(ctx context.Context) error {
 	return s.transport.Serve(ctx, handler)
 }
 
-func (s *Server) handleRequest(ctx context.Context, data []byte) ([]byte, error) {
-	var req protocol.Request
-	if err := s.codec.Decode(data, &req); err != nil {
-		return s.encodeErrorResponse(0, protocol.ErrorCodeInvalidArgument,
-			"decode request failed")
-	}
+// Use adds interceptors to the server's interceptor chain.
+// usage:
+// srv.Use(
+//
+//		interceptor.Recovery(),
+//		interceptor.Logging(nil),
+//		interceptor.Metrics(),
+//	)
+//
+// The interceptors will be executed in the order they are added.
+func (s *Server) Use(interceptors ...interceptor.Interceptor) {
+	s.interceptors = append(s.interceptors, interceptors...)
+}
 
-	handler, err := s.registry.GetHandler(req.Service, req.Method)
-	if err != nil {
-		return s.encodeErrorResponse(req.ID, protocol.ErrorCodeInternal,
-			fmt.Sprintf("method %s.%s not found", req.Service, req.Method))
+func (s *Server) HandleRequest(ctx context.Context, req *protocol.Request) (*protocol.Response, error) {
+	chain := interceptor.NewChain(s.interceptors...)
+
+	invoker := func(ctx context.Context, request *protocol.Request) (any, error) {
+		handler, err := s.registry.GetHandler(request.Service, request.Method)
+		if err != nil {
+			return nil, fmt.Errorf("get handler: %w", err)
+		}
+		return handler(ctx, request)
 	}
 
 	result, err := handler(req.Args)

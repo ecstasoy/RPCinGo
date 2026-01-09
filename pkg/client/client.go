@@ -37,7 +37,28 @@ func NewClient(address string, opts ...Option) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) Call(ctx context.Context, service, method string, args interface{}) (interface{}, error) {
+func (c *Client) Call(ctx context.Context, service, method string, args any) (*protocol.Response, error) {
+	if c.fixedMode {
+		return c.callFixed(ctx, service, method, args)
+	}
+
+	if c.breakerOn {
+		cb := c.getCircuitBreaker(service)
+		return cb.CallResponse(ctx, func() (*protocol.Response, error) {
+			return c.callWithDiscovery(ctx, service, method, args)
+		})
+	}
+
+	return c.callWithDiscovery(ctx, service, method, args)
+}
+
+func (c *Client) callFixed(ctx context.Context, service, method string, args any) (*protocol.Response, error) {
+	conn, err := c.fixedPool.GetWithContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get connection: %w", err)
+	}
+	defer conn.Release()
+
 	req := protocol.NewRequest(service, method, args)
 
 	conn, err := c.pool.GetWithContext(ctx)

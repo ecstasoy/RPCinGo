@@ -27,7 +27,7 @@ type ServerTransport interface {
 	Addr() net.Addr
 }
 
-type Handler func(ctx context.Context, data []byte) ([]byte, error)
+type Handler func(ctx context.Context, req *protocol.Request) (*protocol.Response, error)
 
 // Connection embeds io.ReadWriter and io.Closer to use std interfaces for network connections
 type Connection interface {
