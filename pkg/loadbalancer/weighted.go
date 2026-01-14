@@ -70,6 +70,10 @@ func (wrr *WeightedRoundRobin) isSameInstances(instances []*registry.ServiceInst
 		if inst.ID != wrr.instances[i].ID {
 			return false
 		}
+
+		if inst.Weight != wrr.instances[i].Weight {
+			return false
+		}
 	}
 
 	return true
