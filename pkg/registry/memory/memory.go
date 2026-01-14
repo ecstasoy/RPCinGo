@@ -123,7 +123,10 @@ func (r *Registry) Watch(ctx context.Context, service string) (registry.Watcher,
 	ch := make(chan *registry.Event, 10)
 	r.watchers[service] = append(r.watchers[service], ch)
 
-	return &memoryWatcher{ch: ch}, nil
+	return &memoryWatcher{
+		ch:     ch,
+		stopCh: make(chan struct{}),
+	}, nil
 }
 
 func (r *Registry) notify(service string, event *registry.Event) {
