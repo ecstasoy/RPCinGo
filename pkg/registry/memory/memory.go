@@ -104,6 +104,18 @@ func (r *Registry) GetInstances(ctx context.Context, service string) ([]*registr
 	return result, nil
 }
 
+func (r *Registry) GetInstanceByID(ctx context.Context, instanceID string) (*registry.ServiceInstance, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	instance, exists := r.instances[instanceID]
+	if !exists {
+		return nil, registry.ErrNotFound
+	}
+
+	return instance, nil
+}
+
 func (r *Registry) Watch(ctx context.Context, service string) (registry.Watcher, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
