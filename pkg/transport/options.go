@@ -81,6 +81,7 @@ func WithBufferSize(readSize, writeSize int) ClientOption {
 type ServerOptions struct {
 	ReadTimeout           time.Duration
 	WriteTimeout          time.Duration
+	HandlerTimeout        time.Duration // max time a handler goroutine may run; 0 = no limit
 	MaxConcurrentRequests int
 	WorkerPoolSize        int
 	ReadBufferSize        int
@@ -93,6 +94,7 @@ func DefaultServerOptions() *ServerOptions {
 	return &ServerOptions{
 		ReadTimeout:           10 * time.Second,
 		WriteTimeout:          10 * time.Second,
+		HandlerTimeout:        0, // unlimited by default
 		MaxConcurrentRequests: 0,
 		WorkerPoolSize:        8,
 		ReadBufferSize:        4 * 1024,
@@ -108,6 +110,12 @@ func WithServerTimeout(read, write time.Duration) ServerOption {
 	return func(opts *ServerOptions) {
 		opts.ReadTimeout = read
 		opts.WriteTimeout = write
+	}
+}
+
+func WithHandlerTimeout(timeout time.Duration) ServerOption {
+	return func(opts *ServerOptions) {
+		opts.HandlerTimeout = timeout
 	}
 }
 

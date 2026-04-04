@@ -250,7 +250,13 @@ outer:
 				}
 			}()
 
-			reqCtx, cancel := context.WithTimeout(ctx, s.opts.WriteTimeout)
+			var reqCtx context.Context
+			var cancel context.CancelFunc
+			if s.opts.HandlerTimeout > 0 {
+				reqCtx, cancel = context.WithTimeout(ctx, s.opts.HandlerTimeout)
+			} else {
+				reqCtx, cancel = context.WithCancel(ctx)
+			}
 			defer cancel()
 
 			resp, handlerErr := s.handler(reqCtx, req)
