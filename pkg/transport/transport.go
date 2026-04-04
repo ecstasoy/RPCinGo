@@ -10,10 +10,9 @@ import (
 	"time"
 )
 
-// ClientTransport Thank God Golang has context to manage timeouts and cancellations
 type ClientTransport interface {
 	Dial(ctx context.Context, addr string) error
-	Send(ctx context.Context, data []byte) ([]byte, error)
+	SendRequest(ctx context.Context, req *protocol.Request) (*protocol.Response, error)
 	Close() error
 	IsConnected() bool
 	LocalAddr() net.Addr

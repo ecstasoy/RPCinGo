@@ -4,9 +4,7 @@ package tcp
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"io"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -185,83 +183,86 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) error {
 		}
 	}
 
+	writeCh := make(chan *protocol.Response, 64)
+
+	// writer goroutine: 串行写响应，防止帧交错
+	var writerWg sync.WaitGroup
+	writerWg.Add(1)
+	go func() {
+		defer writerWg.Done()
+		for resp := range writeCh {
+			if s.opts.WriteTimeout > 0 {
+				conn.SetWriteDeadline(time.Now().Add(s.opts.WriteTimeout))
+			}
+			s.codec.WriteResponse(conn, resp)
+			conn.SetWriteDeadline(time.Time{})
+		}
+	}()
+
+	// handlersWg 追踪正在运行的 handler goroutine
+	// 必须等它们全部结束后才能 close(writeCh)，否则会 panic
+	var handlersWg sync.WaitGroup
+
+outer:
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			break outer
 		default:
 		}
 
 		if s.opts.ReadTimeout > 0 {
-			err := conn.SetReadDeadline(time.Now().Add(s.opts.ReadTimeout))
-			if err != nil {
-				return fmt.Errorf("set read deadline failed: %w", err)
-			}
+			conn.SetReadDeadline(time.Now().Add(s.opts.ReadTimeout))
 		}
 
 		header, req, err := s.codec.ReadRequest(conn)
 		if err != nil {
-			if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
-				return nil
-			}
-			return fmt.Errorf("read request failed: %w", err)
+			break outer
 		}
+		conn.SetReadDeadline(time.Time{})
 
 		if s.opts.MaxRequestBodySize > 0 && int64(header.BodyLength) > s.opts.MaxRequestBodySize {
-			resp := protocol.NewErrorResponse(header.RequestID, protocol.NewError(protocol.ErrorRequestEntityTooLarge, "request body too large"))
-			if err := s.codec.WriteResponse(conn, resp); err != nil {
-				return fmt.Errorf("write error response failed: %w", err)
-			}
+			writeCh <- protocol.NewErrorResponse(header.RequestID,
+				protocol.NewError(protocol.ErrorRequestEntityTooLarge, "request body too large"))
 			continue
 		}
 
 		if s.reqSemaphore != nil {
 			select {
 			case s.reqSemaphore <- struct{}{}:
-			case <-ctx.Done():
-				return ctx.Err()
 			default:
-				resp := protocol.NewErrorResponse(header.RequestID, protocol.NewError(protocol.ErrorCodeUnavailable, "too many concurrent requests"))
-				if err := s.codec.WriteResponse(conn, resp); err != nil {
-					return fmt.Errorf("write error response failed: %w", err)
-				}
+				writeCh <- protocol.NewErrorResponse(header.RequestID,
+					protocol.NewError(protocol.ErrorCodeUnavailable, "too many concurrent requests"))
 				continue
 			}
 		}
 
-		reqCtx, cancel := context.WithTimeout(ctx, s.opts.WriteTimeout)
+		handlersWg.Add(1)
+		go func(header *protocol.Header, req *protocol.Request) {
+			defer handlersWg.Done()
+			defer func() {
+				if s.reqSemaphore != nil {
+					<-s.reqSemaphore
+				}
+			}()
 
-		resp, handlerErr := s.handler(reqCtx, req)
-		cancel()
+			reqCtx, cancel := context.WithTimeout(ctx, s.opts.WriteTimeout)
+			defer cancel()
 
-		if s.reqSemaphore != nil {
-			<-s.reqSemaphore
-		}
-
-		if handlerErr != nil {
-			resp = protocol.NewErrorResponse(header.RequestID, protocol.NewError(protocol.ErrorCodeInternal, handlerErr.Error()))
-		}
-
-		if s.opts.WriteTimeout > 0 {
-			err := conn.SetWriteDeadline(time.Now().Add(s.opts.WriteTimeout))
-			if err != nil {
-				return fmt.Errorf("set write deadline failed: %w", err)
+			resp, handlerErr := s.handler(reqCtx, req)
+			if handlerErr != nil {
+				resp = protocol.NewErrorResponse(header.RequestID,
+					protocol.NewError(protocol.ErrorCodeInternal, handlerErr.Error()))
 			}
-		}
-
-		if err := s.codec.WriteResponse(conn, resp); err != nil {
-			return fmt.Errorf("write response failed: %w", err)
-		}
-
-		err = conn.SetReadDeadline(time.Time{})
-		if err != nil {
-			return fmt.Errorf("set read deadline failed: %w", err)
-		}
-		err = conn.SetWriteDeadline(time.Time{})
-		if err != nil {
-			return fmt.Errorf("set write deadline failed: %w", err)
-		}
+			writeCh <- resp
+		}(header, req)
 	}
+
+	// 等所有 handler 把响应写入 writeCh 后再关闭，避免 send on closed channel
+	handlersWg.Wait()
+	close(writeCh)
+	writerWg.Wait()
+	return nil
 }
 
 func (s *Server) CloseConnection(conn net.Conn) error {

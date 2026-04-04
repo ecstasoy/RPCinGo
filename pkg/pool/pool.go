@@ -363,7 +363,7 @@ func newPooledConnection(client *tcp.Client, pool *ConnectionPool) *PooledConnec
 	}
 }
 
-func (pc *PooledConnection) Send(ctc context.Context, data []byte) ([]byte, error) {
+func (pc *PooledConnection) SendRequest(ctx context.Context, req *protocol.Request) (*protocol.Response, error) {
 	pc.mu.Lock()
 
 	if pc.closed {
@@ -376,7 +376,7 @@ func (pc *PooledConnection) Send(ctc context.Context, data []byte) ([]byte, erro
 
 	pc.mu.Unlock()
 
-	return pc.Client.Send(ctc, data)
+	return pc.Client.SendRequest(ctx, req)
 }
 
 func (pc *PooledConnection) IsHealthy() bool {

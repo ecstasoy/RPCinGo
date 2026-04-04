@@ -7,12 +7,22 @@ import (
 	"fmt"
 	"net"
 	"sync"
-	"time"
 
 	"RPCinGo/pkg/protocol"
 	"RPCinGo/pkg/transport"
 )
 
+// pendingCall represents a pending request awaiting a response or error.
+// done is a channel used to signal the completion of the pending call.
+// respBody contains the decompressed and partially decoded response body bytes.
+// err holds any error encountered during request processing.
+type pendingCall struct {
+	done     chan struct{}
+	respBody []byte // decompressed response body bytes, decoded by the caller
+	err      error
+}
+
+// Client manages the network connection, request encoding, decoding, and concurrency for a client in an RPC framework.
 type Client struct {
 	address   string
 	opts      *transport.ClientOptions
@@ -20,7 +30,12 @@ type Client struct {
 	conn      net.Conn
 	connected bool
 	mu        sync.RWMutex // protects connected and conn
-	sendMu    sync.Mutex   // protects send operations
+
+	writeMu   sync.Mutex              // 保护并发写
+	pendingMu sync.Mutex              // 保护 pending map
+	pending   map[uint64]*pendingCall // requestID -> caller
+	closeCh   chan struct{}           // read loop 退出信号
+	closeOnce sync.Once
 }
 
 var _ transport.ClientTransport = (*Client)(nil)
@@ -44,6 +59,7 @@ func NewClient(
 	}
 }
 
+// Dial establishes a TCP connection to the specified address and initializes the client state for further interactions.
 func (c *Client) Dial(ctx context.Context, address string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -89,104 +105,70 @@ func (c *Client) Dial(ctx context.Context, address string) error {
 	c.conn = conn
 	c.connected = true
 	c.address = addr
+	c.pending = make(map[uint64]*pendingCall)
+	c.closeCh = make(chan struct{})
+	go c.readLoop(conn)
 
 	return nil
 }
 
+// SendRequest sends a request to the server, waits for the response, and returns the decoded result or an error.
 func (c *Client) SendRequest(ctx context.Context, req *protocol.Request) (*protocol.Response, error) {
-	reqData, err := c.Codec.EncodeRequest(req)
+	call := &pendingCall{done: make(chan struct{})}
+
+	c.pendingMu.Lock()
+	c.pending[req.ID] = call
+	c.pendingMu.Unlock()
+
+	c.writeMu.Lock()
+	err := c.Codec.WriteRequest(c.conn, req)
+	c.writeMu.Unlock()
 	if err != nil {
-		return nil, fmt.Errorf("encode request: %w", err)
+		c.pendingMu.Lock()
+		delete(c.pending, req.ID)
+		c.pendingMu.Unlock()
+		return nil, fmt.Errorf("write request failed: %w", err)
 	}
 
-	respData, err := c.Send(ctx, reqData)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := c.Codec.DecodeResponse(respData)
-	if err != nil {
-		return nil, fmt.Errorf("decode response: %w", err)
-	}
-
-	return resp, nil
-}
-
-func (c *Client) Send(ctx context.Context, data []byte) ([]byte, error) {
-	c.mu.RLock()
-	if !c.connected || c.conn == nil {
-		c.mu.RUnlock()
-		return nil, fmt.Errorf("not connected, call Dial() first")
-	}
-	conn := c.conn
-	c.mu.RUnlock()
-
-	c.sendMu.Lock()
-	defer c.sendMu.Unlock()
-
-	if deadline, ok := ctx.Deadline(); ok {
-		if err := conn.SetWriteDeadline(deadline); err != nil {
-			return nil, fmt.Errorf("set write deadline failed: %w", err)
+	select {
+	case <-call.done:
+		if call.err != nil {
+			return nil, call.err
 		}
-	} else {
-		if err := conn.SetWriteDeadline(time.Now().Add(c.opts.WriteTimeout)); err != nil {
-			return nil, fmt.Errorf("set write deadline failed: %w", err)
-		}
+		return c.Codec.DecodeResponse(call.respBody)
+	case <-ctx.Done():
+		c.pendingMu.Lock()
+		delete(c.pending, req.ID)
+		c.pendingMu.Unlock()
+		return nil, ctx.Err()
+	case <-c.closeCh:
+		return nil, fmt.Errorf("connection closed")
 	}
-
-	if err := writeFull(conn, data); err != nil {
-		return nil, fmt.Errorf("write to connection failed: %w", err)
-	}
-
-	if deadline, ok := ctx.Deadline(); ok {
-		if err := conn.SetReadDeadline(deadline); err != nil {
-			return nil, fmt.Errorf("set read deadline failed: %w", err)
-		}
-	} else {
-		if err := conn.SetReadDeadline(time.Now().Add(c.opts.ReadTimeout)); err != nil {
-			return nil, fmt.Errorf("set read deadline failed: %w", err)
-		}
-	}
-
-	header, respBody, err := c.Codec.DecodeFromReader(conn)
-	if err != nil {
-		return nil, fmt.Errorf("read response from connection failed: %w", err)
-	}
-
-	if header.MsgType != protocol.MsgTypeResponse {
-		return nil, fmt.Errorf("expected response message type, got: %s", header.MsgType)
-	}
-
-	// Clear deadlines
-	err = conn.SetWriteDeadline(time.Time{})
-	if err != nil {
-		return nil, fmt.Errorf("set write deadline failed: %w", err)
-	}
-	err = conn.SetReadDeadline(time.Time{})
-	if err != nil {
-		return nil, fmt.Errorf("set read deadline failed: %w", err)
-	}
-
-	return respBody, nil
 }
 
 func (c *Client) Close() error {
 	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	if !c.connected {
+		c.mu.Unlock()
 		return nil
 	}
-
-	if c.conn != nil {
-		if err := c.conn.Close(); err != nil {
-			return fmt.Errorf("close connection failed: %w", err)
-		}
-		c.conn = nil
-	}
-
+	conn := c.conn
+	c.conn = nil
 	c.connected = false
+	c.mu.Unlock()
 
+	// Closing the conn causes readLoop's DecodeFromReader to return an error,
+	// which triggers closeWithError. We also call it directly to unblock any
+	// pending callers in case readLoop hasn't noticed yet.
+	var closeErr error
+	if conn != nil {
+		closeErr = conn.Close()
+	}
+	c.closeWithError(fmt.Errorf("connection closed"))
+
+	if closeErr != nil {
+		return fmt.Errorf("close connection failed: %w", closeErr)
+	}
 	return nil
 }
 
@@ -218,34 +200,47 @@ func (c *Client) RemoteAddr() net.Addr {
 	return nil
 }
 
-func (c *Client) SendWithRetry(ctx context.Context, data []byte) ([]byte, error) {
-	var lastErr error
-	for attempt := 0; attempt <= c.opts.MaxRetries; attempt++ {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		default:
+// readLoop receives conn as a parameter to avoid racing with Close() which sets
+// c.conn = nil. The goroutine holds its own reference to the connection.
+func (c *Client) readLoop(conn net.Conn) {
+	defer c.closeWithError(fmt.Errorf("connection closed"))
+
+	for {
+		header, bodyBytes, err := c.Codec.DecodeFromReader(conn)
+		if err != nil {
+			return
 		}
 
-		resp, err := c.Send(ctx, data)
-		if err == nil {
-			return resp, nil
+		c.pendingMu.Lock()
+		call, ok := c.pending[header.RequestID]
+		if ok {
+			delete(c.pending, header.RequestID)
 		}
+		c.pendingMu.Unlock()
 
-		lastErr = err
-
-		if attempt == c.opts.MaxRetries {
-			break
-		}
-
-		select {
-		case <-time.After(c.opts.RetryInterval):
-		case <-ctx.Done():
-			return nil, ctx.Err()
+		if ok {
+			call.respBody = bodyBytes
+			close(call.done)
 		}
 	}
+}
 
-	return nil, fmt.Errorf("send failed after %d retries: %w", c.opts.MaxRetries, lastErr)
+func (c *Client) closeWithError(err error) {
+	c.closeOnce.Do(func() {
+		close(c.closeCh)
+
+		c.mu.Lock()
+		c.connected = false
+		c.mu.Unlock()
+
+		c.pendingMu.Lock()
+		for id, call := range c.pending {
+			call.err = err
+			close(call.done)
+			delete(c.pending, id)
+		}
+		c.pendingMu.Unlock()
+	})
 }
 
 func writeFull(w net.Conn, b []byte) error {
