@@ -28,5 +28,21 @@ go.work.sum
 .env
 
 # Editor/IDE
-# .idea/
-# .vscode/
+.idea/
+.vscode/
+.cursor/
+.obsidian/
+
+# Claude Code
+.claude/
+
+# etcd data
+default.etcd/
+scripts/default.etcd/
+
+# Compiled binaries (root only)
+/client
+/server
+
+# Debug logs
+tagbardebug.log
