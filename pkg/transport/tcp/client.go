@@ -5,6 +5,7 @@ package tcp
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"sync"
 
@@ -243,7 +244,7 @@ func (c *Client) closeWithError(err error) {
 	})
 }
 
-func writeFull(w net.Conn, b []byte) error {
+func writeFull(w io.Writer, b []byte) error {
 	for len(b) > 0 {
 		n, err := w.Write(b)
 		if err != nil {

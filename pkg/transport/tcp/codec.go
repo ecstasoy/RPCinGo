@@ -146,8 +146,8 @@ func (pc *ProtocolCodec) WriteRequest(w io.Writer, req *protocol.Request) error 
 		return fmt.Errorf("encode request error: %w", err)
 	}
 
-	if _, err := w.Write(data); err != nil {
-		return fmt.Errorf("write response error: %w", err)
+	if err := writeFull(w, data); err != nil {
+		return fmt.Errorf("write request error: %w", err)
 	}
 
 	return nil
@@ -159,7 +159,7 @@ func (pc *ProtocolCodec) WriteResponse(w io.Writer, resp *protocol.Response) err
 		return fmt.Errorf("encode response error: %w", err)
 	}
 
-	if _, err := w.Write(data); err != nil {
+	if err := writeFull(w, data); err != nil {
 		return fmt.Errorf("write response error: %w", err)
 	}
 

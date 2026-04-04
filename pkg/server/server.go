@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"sync"
 	"time"
 
 	"RPCinGo/pkg/codec"
@@ -24,8 +25,9 @@ type Server struct {
 	codec     codec.Codec
 
 	// Registry integration
-	serviceInstance *registry.ServiceInstance
-	stopHeartbeat   chan struct{}
+	serviceInstance  *registry.ServiceInstance
+	stopHeartbeat    chan struct{}
+	stopHeartbeatOne sync.Once
 
 	interceptors []interceptor.Interceptor
 }
@@ -185,7 +187,7 @@ func (s *Server) startHeartbeat() error {
 }
 
 func (s *Server) Stop() error {
-	close(s.stopHeartbeat)
+	s.stopHeartbeatOne.Do(func() { close(s.stopHeartbeat) })
 
 	if s.opts.enableRegistry && s.opts.registry != nil && s.serviceInstance != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
