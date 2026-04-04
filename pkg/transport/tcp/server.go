@@ -194,7 +194,11 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) error {
 			if s.opts.WriteTimeout > 0 {
 				conn.SetWriteDeadline(time.Now().Add(s.opts.WriteTimeout))
 			}
-			s.codec.WriteResponse(conn, resp)
+			if err := s.codec.WriteResponse(conn, resp); err != nil {
+				// 写失败说明连接已断开，关闭连接让读循环感知 EOF 并退出
+				conn.Close()
+				return
+			}
 			conn.SetWriteDeadline(time.Time{})
 		}
 	}()
