@@ -37,7 +37,7 @@ func Metrics() Interceptor {
 	return func(ctx context.Context, req *protocol.Request, invoker Invoker) (any, error) {
 		start := time.Now()
 
-		var service, method string
+		service, method := req.Service, req.Method
 
 		resp, err := invoker(ctx, req)
 

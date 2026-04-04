@@ -4,6 +4,7 @@ package interceptor
 
 import (
 	"RPCinGo/pkg/protocol"
+	"RPCinGo/pkg/tracing"
 	"context"
 	"fmt"
 	"time"
@@ -32,17 +33,18 @@ func Logging(logger Logger) Interceptor {
 	return func(ctx context.Context, req *protocol.Request, invoker Invoker) (any, error) {
 		start := time.Now()
 
-		var service, method string
-		logger.Infof("→ RPC call: [%s.%s]", service, method)
+		service, method := req.Service, req.Method
+		traceID := tracing.TraceID(ctx)
+		logger.Infof("→ RPC call: [%s.%s] trace=%s", service, method, traceID)
 
 		resp, err := invoker(ctx, req)
 
 		duration := time.Since(start)
 
 		if err != nil {
-			logger.Errorf("✗ RPC call: [%s.%s] failed in %v: %v", service, method, duration, err)
+			logger.Errorf("✗ RPC call: [%s.%s] trace=%s failed in %v: %v", service, method, traceID, duration, err)
 		} else {
-			logger.Infof("✓ RPC call: [%s.%s] succeeded in %v", service, method, duration)
+			logger.Infof("✓ RPC call: [%s.%s] trace=%s succeeded in %v", service, method, traceID, duration)
 		}
 
 		return resp, err
