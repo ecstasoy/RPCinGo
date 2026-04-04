@@ -597,25 +597,32 @@ func (p *ConnectionPool) createNewConnectionWithContext(ctx context.Context) (*P
 			}
 
 			waitCtx, cancel := context.WithTimeout(ctx, timeout)
-			defer cancel()
-
-			select {
-			case conn := <-p.pool:
-				if conn.IsHealthy() && !conn.IsExpired(p.opts.MaxIdleTime, p.opts.MaxLifetime) {
-					return conn, nil
+			conn, ok := func() (*PooledConnection, bool) {
+				defer cancel()
+				select {
+				case c := <-p.pool:
+					return c, true
+				case <-waitCtx.Done():
+					return nil, false
 				}
+			}()
 
-				conn.Close()
-				atomic.AddInt64(&p.stats.closeCount, 1)
-
-				p.mu.Lock()
-				p.currentSize--
-				p.mu.Unlock()
-
-				continue
-			case <-waitCtx.Done():
+			if !ok {
 				return nil, fmt.Errorf("wait for connection timeout after %v: %w", timeout, waitCtx.Err())
 			}
+
+			if conn.IsHealthy() && !conn.IsExpired(p.opts.MaxIdleTime, p.opts.MaxLifetime) {
+				return conn, nil
+			}
+
+			conn.Close()
+			atomic.AddInt64(&p.stats.closeCount, 1)
+
+			p.mu.Lock()
+			p.currentSize--
+			p.mu.Unlock()
+
+			continue
 
 		}
 		p.mu.Unlock()
