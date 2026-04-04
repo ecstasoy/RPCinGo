@@ -752,7 +752,7 @@ func (p *ConnectionPool) healthCheckRoutine() {
 func (p *ConnectionPool) healthCheck() {
 	var toCheck []*PooledConnection
 
-	for len(p.pool) > 0 {
+	for {
 		select {
 		case conn := <-p.pool:
 			toCheck = append(toCheck, conn)
