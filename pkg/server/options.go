@@ -3,8 +3,10 @@
 package server
 
 import (
+	"RPCinGo/pkg/ratelimiter"
 	"time"
 
+	"RPCinGo/pkg/interceptor"
 	"RPCinGo/pkg/protocol"
 	"RPCinGo/pkg/registry"
 )
@@ -17,6 +19,8 @@ type serverOptions struct {
 	writeTimeout   time.Duration
 	maxConcurrent  int
 	workerPoolSize int
+
+	interceptors []interceptor.Interceptor
 
 	// Registry options
 	serviceName       string
@@ -82,5 +86,17 @@ func WithRegistry(serviceName, version string, reg registry.Registry) Option {
 func WithHeartbeatInterval(interval time.Duration) Option {
 	return func(o *serverOptions) {
 		o.heartbeatInterval = interval
+	}
+}
+
+func WithInterceptors(interceptors ...interceptor.Interceptor) Option {
+	return func(o *serverOptions) {
+		o.interceptors = append(o.interceptors, interceptors...)
+	}
+}
+
+func WithRateLimit(limiter ratelimiter.RateLimiter) Option {
+	return func(o *serverOptions) {
+		o.interceptors = append([]interceptor.Interceptor{interceptor.RateLimit(limiter)}, o.interceptors...)
 	}
 }

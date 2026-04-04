@@ -7,6 +7,10 @@ import (
 	"os"
 	"time"
 
+	"RPCinGo/pkg/client"
+	"RPCinGo/pkg/loadbalancer"
+	"RPCinGo/pkg/protocol"
+	"RPCinGo/pkg/server"
 	"gopkg.in/yaml.v3"
 )
 
@@ -108,4 +112,111 @@ func Load(path string) (*Config, error) {
 		return nil, err
 	}
 	return &cfg, nil
+}
+
+// BuildServerOptions converts the [ServerConfig] section into a ready-to-use
+// []server.Option slice.  Pass additional options to override individual fields:
+//
+//	cfg, _ := config.Load("config.yaml")
+//	srv := server.NewServer(append(config.BuildServerOptions(cfg), server.WithAddress(":9090"))...)
+func BuildServerOptions(cfg *Config) []server.Option {
+	codecType, compressType := parseCodecTypes(cfg.Server.Codec, cfg.Server.Compress)
+
+	opts := []server.Option{
+		server.WithAddress(cfg.Server.Address),
+		server.WithCodec(codecType, compressType),
+	}
+
+	if cfg.Server.ReadTimeout > 0 || cfg.Server.WriteTimeout > 0 {
+		opts = append(opts, server.WithTimeout(cfg.Server.ReadTimeout, cfg.Server.WriteTimeout))
+	}
+
+	if cfg.Server.MaxConcurrent > 0 || cfg.Server.WorkerPoolSize > 0 {
+		opts = append(opts, server.WithConcurrency(cfg.Server.MaxConcurrent, cfg.Server.WorkerPoolSize))
+	}
+
+	if cfg.Server.HeartbeatInterval > 0 {
+		opts = append(opts, server.WithHeartbeatInterval(cfg.Server.HeartbeatInterval))
+	}
+
+	return opts
+}
+
+// BuildClientOptions converts the [ClientConfig] and [PoolConfig] sections into
+// a ready-to-use []client.Option slice.  The caller is still responsible for
+// providing a registry.Discovery via client.WithDiscovery when mode == "discovery".
+//
+//	cfg, _ := config.Load("config.yaml")
+//	cli, _ := client.NewDiscoveryClient(append(
+//	    config.BuildClientOptions(cfg),
+//	    client.WithDiscovery(myDiscovery),
+//	)...)
+func BuildClientOptions(cfg *Config) []client.Option {
+	codecType, compressType := parseCodecTypes(cfg.Client.Codec, cfg.Client.Compress)
+
+	opts := []client.Option{
+		client.WithCodec(codecType, compressType),
+		client.WithWatch(cfg.Client.Watch),
+		client.WithCircuitBreaker(cfg.Client.CircuitBreaker),
+	}
+
+	maxConn := cfg.Client.MaxConnections
+	minConn := cfg.Client.MinConnections
+	if cfg.Pool.MaxSize > 0 {
+		maxConn = cfg.Pool.MaxSize
+	}
+	if cfg.Pool.MinSize > 0 {
+		minConn = cfg.Pool.MinSize
+	}
+	if maxConn > 0 || minConn > 0 {
+		opts = append(opts, client.WithPoolSize(maxConn, minConn))
+	}
+
+	if cfg.Client.CallTimeout > 0 {
+		opts = append(opts, client.WithTimeout(cfg.Client.CallTimeout))
+	}
+
+	if lb := parseLoadBalancer(cfg.Client.LoadBalancer); lb != nil {
+		opts = append(opts, client.WithLoadBalancer(lb))
+	}
+
+	return opts
+}
+
+// parseCodecTypes maps YAML string values to protocol type constants.
+func parseCodecTypes(codecStr, compressStr string) (protocol.CodecType, protocol.CompressType) {
+	var ct protocol.CodecType
+	switch codecStr {
+	case "protobuf":
+		ct = protocol.CodecTypeProtobuf
+	default:
+		ct = protocol.CodecTypeJSON
+	}
+
+	var cmp protocol.CompressType
+	switch compressStr {
+	case "gzip":
+		cmp = protocol.CompressTypeGzip
+	default:
+		cmp = protocol.CompressTypeNone
+	}
+
+	return ct, cmp
+}
+
+// parseLoadBalancer maps YAML string values to LoadBalancer instances.
+// Returns nil for unrecognised names (caller falls back to default).
+func parseLoadBalancer(name string) loadbalancer.LoadBalancer {
+	switch name {
+	case "round_robin", "roundrobin", "rr":
+		return loadbalancer.NewRoundRobin()
+	case "random":
+		return loadbalancer.NewRandom()
+	case "weighted", "weighted_round_robin":
+		return loadbalancer.NewWeightedRoundRobin()
+	case "consistent_hash", "consistent":
+		return loadbalancer.NewConsistentHash()
+	default:
+		return nil
+	}
 }

@@ -50,6 +50,7 @@ func NewServer(opts ...Option) *Server {
 		),
 		codec:         codec.Get(options.codecType),
 		stopHeartbeat: make(chan struct{}),
+		interceptors:  options.interceptors,
 	}
 }
 
@@ -118,7 +119,11 @@ func (s *Server) HandleRequest(ctx context.Context, req *protocol.Request) (*pro
 		return protocol.NewErrorResponse(req.ID, protocol.NewError(code, msg)), nil
 	}
 
-	return protocol.NewSuccessResponse(req.ID, result), nil
+	resp := protocol.NewSuccessResponse(req.ID, result)
+	if spanID, ok := req.GetMetadata(protocol.MetaKeySpanID); ok && spanID != "" {
+		resp.SetMetadata(protocol.MetaKeySpanID, spanID)
+	}
+	return resp, nil
 }
 
 func (s *Server) Addr() string {

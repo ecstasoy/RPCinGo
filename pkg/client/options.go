@@ -1,8 +1,10 @@
 package client
 
 import (
+	"RPCinGo/pkg/ratelimiter"
 	"time"
 
+	"RPCinGo/pkg/interceptor"
 	"RPCinGo/pkg/loadbalancer"
 	"RPCinGo/pkg/protocol"
 	"RPCinGo/pkg/registry"
@@ -20,6 +22,10 @@ type clientOptions struct {
 	loadBalancer         loadbalancer.LoadBalancer
 	enableWatch          bool
 	enableCircuitBreaker bool
+
+	interceptors  []interceptor.Interceptor
+	maxRetries    int
+	retryInterval time.Duration
 }
 
 func defaultOptions() *clientOptions {
@@ -80,5 +86,30 @@ func WithWatch(enable bool) Option {
 func WithCircuitBreaker(enable bool) Option {
 	return func(o *clientOptions) {
 		o.enableCircuitBreaker = enable
+	}
+}
+
+// WithClientInterceptors adds client-side interceptors executed around every Call.
+// Multiple calls to WithClientInterceptors append to the existing list.
+// Execution order matches registration order (first registered = outermost).
+func WithClientInterceptors(interceptors ...interceptor.Interceptor) Option {
+	return func(o *clientOptions) {
+		o.interceptors = append(o.interceptors, interceptors...)
+	}
+}
+
+// WithRetry enables automatic retry on transient failures.
+// maxRetries is the number of additional attempts after the first (e.g. 2 → up to 3 total).
+// A Retry interceptor is prepended to the chain so it wraps all other interceptors.
+func WithRetry(maxRetries int, retryInterval time.Duration) Option {
+	return func(o *clientOptions) {
+		o.maxRetries = maxRetries
+		o.retryInterval = retryInterval
+	}
+}
+
+func WithRateLimit(limiter ratelimiter.RateLimiter) Option {
+	return func(o *clientOptions) {
+		o.interceptors = append([]interceptor.Interceptor{interceptor.RateLimit(limiter)}, o.interceptors...)
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"RPCinGo/pkg/codec"
+	"RPCinGo/pkg/interceptor"
 	"RPCinGo/pkg/loadbalancer"
 	"RPCinGo/pkg/pool"
 	"RPCinGo/pkg/protocol"
@@ -37,7 +38,8 @@ type Client struct {
 	breakerMu sync.RWMutex
 	breakerOn bool
 
-	codec codec.Codec
+	codec        codec.Codec
+	interceptors []interceptor.Interceptor
 }
 
 func NewClient(address string, opts ...Option) (*Client, error) {
@@ -57,10 +59,11 @@ func NewClient(address string, opts ...Option) (*Client, error) {
 	}
 
 	return &Client{
-		opts:      options,
-		fixedPool: pool,
-		fixedMode: true,
-		codec:     codec.Get(options.codecType),
+		opts:         options,
+		fixedPool:    pool,
+		fixedMode:    true,
+		codec:        codec.Get(options.codecType),
+		interceptors: buildInterceptors(options),
 	}, nil
 }
 
@@ -85,36 +88,61 @@ func NewDiscoveryClient(opts ...Option) (*Client, error) {
 		breakerOn:     options.enableCircuitBreaker,
 		fixedMode:     false,
 		codec:         codec.Get(options.codecType),
+		interceptors:  buildInterceptors(options),
 	}, nil
 }
 
-func (c *Client) Call(ctx context.Context, service, method string, args any) (*protocol.Response, error) {
-	if c.fixedMode {
-		return c.callFixed(ctx, service, method, args)
-	}
-
-	if c.breakerOn {
-		cb := c.getCircuitBreaker(service)
-		return cb.CallResponse(ctx, func() (*protocol.Response, error) {
-			return c.callWithDiscovery(ctx, service, method, args)
-		})
-	}
-
-	return c.callWithDiscovery(ctx, service, method, args)
+// Use appends client-side interceptors that wrap every Call.
+// Interceptors added via Use run after those set at construction time (e.g. Retry).
+func (c *Client) Use(interceptors ...interceptor.Interceptor) {
+	c.interceptors = append(c.interceptors, interceptors...)
 }
 
-func (c *Client) callFixed(ctx context.Context, service, method string, args any) (*protocol.Response, error) {
+func (c *Client) Call(ctx context.Context, service, method string, args any) (*protocol.Response, error) {
+	if c.opts.callTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, c.opts.callTimeout)
+		defer cancel()
+	}
+
+	req := protocol.NewRequest(service, method, args)
+
+	invoker := func(ctx context.Context, req *protocol.Request) (any, error) {
+		if c.fixedMode {
+			return c.callFixed(ctx, req)
+		}
+		if c.breakerOn {
+			cb := c.getCircuitBreaker(req.Service)
+			return cb.CallResponse(ctx, func() (*protocol.Response, error) {
+				return c.callWithDiscovery(ctx, req)
+			})
+		}
+		return c.callWithDiscovery(ctx, req)
+	}
+
+	chain := interceptor.NewChain(c.interceptors...)
+	result, err := chain.Intercept(ctx, req, invoker)
+	if err != nil {
+		return nil, err
+	}
+	if result == nil {
+		return nil, nil
+	}
+	return result.(*protocol.Response), nil
+}
+
+func (c *Client) callFixed(ctx context.Context, req *protocol.Request) (*protocol.Response, error) {
 	conn, err := c.fixedPool.GetWithContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get connection: %w", err)
 	}
-	defer conn.Release()
 
-	req := protocol.NewRequest(service, method, args)
 	resp, err := conn.Client.SendRequest(ctx, req)
 	if err != nil {
+		conn.Close()
 		return nil, fmt.Errorf("send: %w", err)
 	}
+	conn.Release()
 
 	if resp.IsError() {
 		return nil, unmapError(resp)
@@ -123,14 +151,14 @@ func (c *Client) callFixed(ctx context.Context, service, method string, args any
 	return resp, nil
 }
 
-func (c *Client) callWithDiscovery(ctx context.Context, service, method string, args any) (*protocol.Response, error) {
-	instances, err := c.getInstances(ctx, service)
+func (c *Client) callWithDiscovery(ctx context.Context, req *protocol.Request) (*protocol.Response, error) {
+	instances, err := c.getInstances(ctx, req.Service)
 	if err != nil {
 		return nil, fmt.Errorf("get instances: %w", err)
 	}
 
 	if len(instances) == 0 {
-		return nil, fmt.Errorf("no available instances for %s", service)
+		return nil, fmt.Errorf("no available instances for %s", req.Service)
 	}
 
 	instance, err := c.loadBalancer.Pick(ctx, instances)
@@ -142,19 +170,31 @@ func (c *Client) callWithDiscovery(ctx context.Context, service, method string, 
 	if err != nil {
 		return nil, fmt.Errorf("get connection to %s: %w", instance.Endpoint(), err)
 	}
-	defer conn.Release()
 
-	req := protocol.NewRequest(service, method, args)
 	resp, err := conn.Client.SendRequest(ctx, req)
 	if err != nil {
+		conn.Close()
 		return nil, fmt.Errorf("send: %w", err)
 	}
+	conn.Release()
 
 	if resp.IsError() {
 		return nil, unmapError(resp)
 	}
 
 	return resp, nil
+}
+
+// buildInterceptors assembles the final interceptor slice for a new Client.
+// If WithRetry was set, a Retry interceptor is prepended (outermost) so it
+// retries the full chain on transient failures.
+func buildInterceptors(opts *clientOptions) []interceptor.Interceptor {
+	var chain []interceptor.Interceptor
+	if opts.maxRetries > 0 {
+		chain = append(chain, interceptor.Retry(opts.maxRetries, opts.retryInterval))
+	}
+	chain = append(chain, opts.interceptors...)
+	return chain
 }
 
 func (c *Client) getInstances(ctx context.Context, service string) ([]*registry.ServiceInstance, error) {
@@ -266,40 +306,40 @@ func (c *Client) getCircuitBreaker(service string) *circuitbreaker.CircuitBreake
 	return cb
 }
 
-func (c *Client) CallTyped(ctx context.Context, service, method string, req proto.Message, resp proto.Message) error {
+func (c *Client) CallTyped(ctx context.Context, service, method string, req proto.Message, resp proto.Message) (*protocol.Response, error) {
 	respData, err := c.Call(ctx, service, method, req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if respData.IsError() {
-		return fmt.Errorf("rpc error %s", respData.Error.Error())
+		return respData, fmt.Errorf("rpc error %s", respData.Error.Error())
 	}
 
 	if respData.Data == nil {
-		return nil
+		return respData, nil
 	}
 
 	dataBytes, ok := respData.Data.([]byte)
 	if !ok {
 		dataBytes, err = json.Marshal(respData.Data)
 		if err != nil {
-			return fmt.Errorf("marshal response data: %w", err)
+			return respData, fmt.Errorf("marshal response data: %w", err)
 		}
 	}
 
 	switch respData.DataCodec {
 	case protocol.PayloadCodecProtobuf:
-		return proto.Unmarshal(dataBytes, resp)
+		return respData, proto.Unmarshal(dataBytes, resp)
 	case protocol.PayloadCodecJSON:
-		return json.Unmarshal(dataBytes, resp)
+		return respData, json.Unmarshal(dataBytes, resp)
 	case protocol.PayloadCodecRaw:
-		return fmt.Errorf("cannot unmarshal raw bytes into typed response")
+		return respData, fmt.Errorf("cannot unmarshal raw bytes into typed response")
 	default:
 		if err := proto.Unmarshal(dataBytes, resp); err == nil {
-			return nil
+			return respData, nil
 		}
-		return json.Unmarshal(dataBytes, resp)
+		return respData, json.Unmarshal(dataBytes, resp)
 	}
 }
 
