@@ -3,11 +3,12 @@
 package server
 
 import (
-	"RPCinGo/pkg/ratelimiter"
 	"time"
 
 	"RPCinGo/pkg/interceptor"
+	"RPCinGo/pkg/logger"
 	"RPCinGo/pkg/protocol"
+	"RPCinGo/pkg/ratelimiter"
 	"RPCinGo/pkg/registry"
 )
 
@@ -21,6 +22,7 @@ type serverOptions struct {
 	workerPoolSize int
 
 	interceptors []interceptor.Interceptor
+	logger       logger.Logger
 
 	// Registry options
 	serviceName       string
@@ -98,5 +100,11 @@ func WithInterceptors(interceptors ...interceptor.Interceptor) Option {
 func WithRateLimit(limiter ratelimiter.RateLimiter) Option {
 	return func(o *serverOptions) {
 		o.interceptors = append([]interceptor.Interceptor{interceptor.RateLimit(limiter)}, o.interceptors...)
+	}
+}
+
+func WithLogger(l logger.Logger) Option {
+	return func(o *serverOptions) {
+		o.logger = l
 	}
 }

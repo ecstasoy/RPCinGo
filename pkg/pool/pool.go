@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"RPCinGo/pkg/logger"
 	"RPCinGo/pkg/protocol"
 	"RPCinGo/pkg/transport"
 	"RPCinGo/pkg/transport/tcp"
@@ -33,6 +34,7 @@ type PoolOptions struct {
 	ConnectionFactory ConnectionFactory
 	Validator         PoolValidator
 	WaitTimeout       time.Duration
+	Logger            logger.Logger
 }
 
 func DefaultPoolOptions() *PoolOptions {
@@ -109,6 +111,12 @@ func WithPoolValidator(validator PoolValidator) PoolOption {
 func WithWaitTimeout(timeout time.Duration) PoolOption {
 	return func(opts *PoolOptions) {
 		opts.WaitTimeout = timeout
+	}
+}
+
+func WithPoolLogger(l logger.Logger) PoolOption {
+	return func(opts *PoolOptions) {
+		opts.Logger = l
 	}
 }
 
@@ -280,8 +288,12 @@ func (v *DefaultPoolValidator) Validate(opts *PoolOptions) error {
 	}
 
 	if opts.MinSize > opts.MaxSize/2 {
-		fmt.Printf("Warning: MinSize (%d) > MaxSize/2, may waste resources\n",
-			opts.MinSize)
+		l := opts.Logger
+		if l == nil {
+			l = logger.New()
+		}
+		l.Warn("pool config: MinSize > MaxSize/2, may waste resources",
+			"minSize", opts.MinSize, "maxSize", opts.MaxSize)
 	}
 
 	if opts.MaxIdleTime <= 0 {
@@ -308,8 +320,12 @@ func (v *DefaultPoolValidator) Validate(opts *PoolOptions) error {
 	}
 
 	if opts.CleanupInterval < 5*time.Second {
-		fmt.Printf("Warning: CleanupInterval (%v) is too short, may impact performance\n",
-			opts.CleanupInterval)
+		l := opts.Logger
+		if l == nil {
+			l = logger.New()
+		}
+		l.Warn("pool config: CleanupInterval is very short, may impact performance",
+			"cleanupInterval", opts.CleanupInterval)
 	}
 
 	if opts.DialTimeout <= 0 {
@@ -468,6 +484,7 @@ type ConnectionPool struct {
 	opts        *PoolOptions
 	pool        chan *PooledConnection
 	factory     ConnectionFactory
+	log         logger.Logger
 	mu          sync.RWMutex
 	currentSize int
 	closed      bool
@@ -511,10 +528,16 @@ func NewConnectionPool(address string, options ...PoolOption) (*ConnectionPool, 
 		return nil, fmt.Errorf("invalid connection factory: %w", err)
 	}
 
+	log := opts.Logger
+	if log == nil {
+		log = logger.Nop()
+	}
+
 	pool := &ConnectionPool{
 		address:       address,
 		opts:          opts,
 		factory:       factory,
+		log:           log,
 		pool:          make(chan *PooledConnection, opts.MaxSize),
 		stopCleanup:   make(chan struct{}),
 		cleanupTicker: time.NewTicker(opts.CleanupInterval),
@@ -524,9 +547,7 @@ func NewConnectionPool(address string, options ...PoolOption) (*ConnectionPool, 
 	for i := 0; i < opts.MinSize; i++ {
 		conn, err := pool.createConnection()
 		if err != nil {
-			// pre-creation failed, just continue
-			// TODO: Logging system can be used here
-			fmt.Println("Warning: pre-creation of connection failed:", err)
+			pool.log.Warn("pool: pre-creation of connection failed", "error", err)
 			break
 		}
 		pool.pool <- conn

@@ -3,48 +3,34 @@
 package interceptor
 
 import (
+	"context"
+	"time"
+
+	"RPCinGo/pkg/logger"
 	"RPCinGo/pkg/protocol"
 	"RPCinGo/pkg/tracing"
-	"context"
-	"fmt"
-	"time"
 )
 
-type Logger interface {
-	Infof(format string, args ...interface{})
-	Errorf(format string, args ...interface{})
-}
-
-type defaultLogger struct{}
-
-func (l *defaultLogger) Infof(format string, args ...interface{}) {
-	fmt.Printf("[INFO] "+format+"\n", args...)
-}
-
-func (l *defaultLogger) Errorf(format string, args ...interface{}) {
-	fmt.Printf("[ERROR] "+format+"\n", args...)
-}
-
-func Logging(logger Logger) Interceptor {
-	if logger == nil {
-		logger = &defaultLogger{}
+func Logging(l logger.Logger) Interceptor {
+	if l == nil {
+		l = logger.New()
 	}
 
 	return func(ctx context.Context, req *protocol.Request, invoker Invoker) (any, error) {
 		start := time.Now()
-
-		service, method := req.Service, req.Method
 		traceID := tracing.TraceID(ctx)
-		logger.Infof("→ RPC call: [%s.%s] trace=%s", service, method, traceID)
 
 		resp, err := invoker(ctx, req)
 
-		duration := time.Since(start)
-
+		dur := time.Since(start)
 		if err != nil {
-			logger.Errorf("✗ RPC call: [%s.%s] trace=%s failed in %v: %v", service, method, traceID, duration, err)
+			l.Error("rpc call failed",
+				"service", req.Service, "method", req.Method,
+				"trace", traceID, "duration", dur, "error", err)
 		} else {
-			logger.Infof("✓ RPC call: [%s.%s] trace=%s succeeded in %v", service, method, traceID, duration)
+			l.Info("rpc call ok",
+				"service", req.Service, "method", req.Method,
+				"trace", traceID, "duration", dur)
 		}
 
 		return resp, err

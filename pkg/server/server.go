@@ -3,7 +3,6 @@
 package server
 
 import (
-	"RPCinGo/pkg/interceptor"
 	"context"
 	"fmt"
 	"net"
@@ -12,6 +11,8 @@ import (
 	"time"
 
 	"RPCinGo/pkg/codec"
+	"RPCinGo/pkg/interceptor"
+	"RPCinGo/pkg/logger"
 	"RPCinGo/pkg/protocol"
 	"RPCinGo/pkg/registry"
 	"RPCinGo/pkg/transport"
@@ -23,6 +24,7 @@ type Server struct {
 	registry  *ServiceRegistry
 	Transport *tcp.Server
 	codec     codec.Codec
+	log       logger.Logger
 
 	// Registry integration
 	serviceInstance  *registry.ServiceInstance
@@ -40,6 +42,11 @@ func NewServer(opts ...Option) *Server {
 		o(options)
 	}
 
+	log := options.logger
+	if log == nil {
+		log = logger.New()
+	}
+
 	return &Server{
 		opts:     options,
 		registry: newServiceRegistry(),
@@ -51,6 +58,7 @@ func NewServer(opts ...Option) *Server {
 			transport.WithMaxConcurrentRequests(options.maxConcurrent),
 		),
 		codec:         codec.Get(options.codecType),
+		log:           log,
 		stopHeartbeat: make(chan struct{}),
 		interceptors:  options.interceptors,
 	}
@@ -75,9 +83,8 @@ func (s *Server) Start(ctx context.Context) error {
 		}
 
 		go func() {
-			err := s.startHeartbeat()
-			if err != nil {
-				fmt.Printf("heartbeat error: %v\n", err)
+			if err := s.startHeartbeat(); err != nil {
+				s.log.Error("heartbeat stopped", "error", err)
 			}
 		}()
 	}
