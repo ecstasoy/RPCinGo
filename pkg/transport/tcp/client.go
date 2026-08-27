@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"sync/atomic"
 
 	"RPCinGo/pkg/protocol"
 	"RPCinGo/pkg/transport"
@@ -18,9 +19,10 @@ import (
 // respBody contains the decompressed and partially decoded response body bytes.
 // err holds any error encountered during request processing.
 type pendingCall struct {
-	done     chan struct{}
-	respBody []byte // decompressed response body bytes, decoded by the caller
-	err      error
+	done      chan struct{}
+	respBody  []byte             // decompressed response body bytes, decoded by the caller
+	respCodec protocol.CodecType // codec advertised in the response frame header
+	err       error
 }
 
 // Client manages the network connection, request encoding, decoding, and concurrency for a client in an RPC framework.
@@ -32,6 +34,7 @@ type Client struct {
 	connected bool
 	mu        sync.RWMutex // protects connected and conn
 
+	nextID    uint64                  // per-connection request ID counter
 	writeMu   sync.Mutex              // 保护并发写
 	pendingMu sync.Mutex              // 保护 pending map
 	pending   map[uint64]*pendingCall // requestID -> caller
@@ -41,6 +44,8 @@ type Client struct {
 
 var _ transport.ClientTransport = (*Client)(nil)
 
+// NewClient returns an unconnected TCP client configured to use codecType and
+// compressType.
 func NewClient(
 	address string,
 	codecType protocol.CodecType,
@@ -60,7 +65,7 @@ func NewClient(
 	}
 }
 
-// Dial establishes a TCP connection to the specified address and initializes the client state for further interactions.
+// Dial establishes a TCP connection and initializes request tracking state.
 func (c *Client) Dial(ctx context.Context, address string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -113,8 +118,13 @@ func (c *Client) Dial(ctx context.Context, address string) error {
 	return nil
 }
 
-// SendRequest sends a request to the server, waits for the response, and returns the decoded result or an error.
+func (c *Client) nextRequestID() uint64 {
+	return atomic.AddUint64(&c.nextID, 1)
+}
+
+// SendRequest writes req, waits for the matching response, and decodes it.
 func (c *Client) SendRequest(ctx context.Context, req *protocol.Request) (*protocol.Response, error) {
+	req.ID = c.nextRequestID()
 	call := &pendingCall{done: make(chan struct{})}
 
 	c.pendingMu.Lock()
@@ -136,7 +146,7 @@ func (c *Client) SendRequest(ctx context.Context, req *protocol.Request) (*proto
 		if call.err != nil {
 			return nil, call.err
 		}
-		return c.Codec.DecodeResponse(call.respBody)
+		return c.Codec.DecodeResponseWith(call.respCodec, call.respBody)
 	case <-ctx.Done():
 		c.pendingMu.Lock()
 		delete(c.pending, req.ID)
@@ -147,6 +157,7 @@ func (c *Client) SendRequest(ctx context.Context, req *protocol.Request) (*proto
 	}
 }
 
+// Close closes the underlying connection and fails any pending requests.
 func (c *Client) Close() error {
 	c.mu.Lock()
 	if !c.connected {
@@ -173,12 +184,14 @@ func (c *Client) Close() error {
 	return nil
 }
 
+// IsConnected reports whether the client currently has an active connection.
 func (c *Client) IsConnected() bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.connected
 }
 
+// LocalAddr returns the local socket address for the active connection.
 func (c *Client) LocalAddr() net.Addr {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -190,6 +203,7 @@ func (c *Client) LocalAddr() net.Addr {
 	return nil
 }
 
+// RemoteAddr returns the remote socket address for the active connection.
 func (c *Client) RemoteAddr() net.Addr {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -221,6 +235,7 @@ func (c *Client) readLoop(conn net.Conn) {
 
 		if ok {
 			call.respBody = bodyBytes
+			call.respCodec = header.Codec
 			close(call.done)
 		}
 	}
