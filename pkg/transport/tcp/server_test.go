@@ -129,16 +129,16 @@ func TestServer_Concurrent(t *testing.T) {
 		if req.Method == "Add" {
 			argsBytes, ok := req.Args.([]byte)
 			if !ok {
-				return protocol.NewErrorResponse(req.ID, 
+				return protocol.NewErrorResponse(req.ID,
 					protocol.NewError(protocol.ErrorCodeInvalidArgument, "args is not bytes")), nil
 			}
-			
+
 			var argsMap map[string]interface{}
 			if err := server.codec.codec.Decode(argsBytes, &argsMap); err != nil {
-				return protocol.NewErrorResponse(req.ID, 
+				return protocol.NewErrorResponse(req.ID,
 					protocol.NewError(protocol.ErrorCodeInvalidArgument, "decode args failed")), nil
 			}
-			
+
 			a := int(argsMap["a"].(float64))
 			b := int(argsMap["b"].(float64))
 			result := a + b
@@ -146,7 +146,7 @@ func TestServer_Concurrent(t *testing.T) {
 			return protocol.NewSuccessResponse(req.ID, result), nil
 		}
 
-		return protocol.NewErrorResponse(req.ID, 
+		return protocol.NewErrorResponse(req.ID,
 			protocol.NewError(protocol.ErrorCodeNotFound, fmt.Sprintf("unknown method: %s", req.Method))), nil
 	}
 
@@ -187,27 +187,27 @@ func TestServer_Concurrent(t *testing.T) {
 					done <- false
 					return
 				}
-				
+
 				if resp.IsError() {
 					t.Errorf("客户端 %d 请求 %d 返回错误: %v", clientID, j, resp.Error)
 					done <- false
 					return
 				}
-				
+
 				resultBytes, ok := resp.Data.([]byte)
 				if !ok {
 					t.Errorf("客户端 %d 请求 %d 响应数据类型错误: %T", clientID, j, resp.Data)
 					done <- false
 					return
 				}
-				
+
 				var result interface{}
 				if err := server.codec.codec.Decode(resultBytes, &result); err != nil {
 					t.Errorf("客户端 %d 请求 %d 解码结果失败: %v", clientID, j, err)
 					done <- false
 					return
 				}
-				
+
 				resultInt := int(result.(float64))
 				expected := clientID + j
 				if resultInt != expected {
