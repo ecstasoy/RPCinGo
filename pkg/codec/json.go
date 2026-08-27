@@ -13,15 +13,20 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// JSONCodec encodes RPC payloads as JSON and preserves typed request/response
+// bodies as raw bytes plus an explicit payload codec marker.
 type JSONCodec struct{}
 
 var _ Codec = (*JSONCodec)(nil)
 var _ StreamCodec = (*JSONCodec)(nil)
 
+// NewJSONCodec returns the built-in JSON codec.
 func NewJSONCodec() Codec {
 	return &JSONCodec{}
 }
 
+// Encode serializes v, applying special handling for protocol.Request and
+// protocol.Response bodies.
 func (c *JSONCodec) Encode(v interface{}) ([]byte, error) {
 	if req, ok := v.(*protocol.Request); ok {
 		return c.encodeRequest(req)
@@ -34,6 +39,8 @@ func (c *JSONCodec) Encode(v interface{}) ([]byte, error) {
 	return json.Marshal(v)
 }
 
+// Decode deserializes data into v, applying special handling for
+// protocol.Request and protocol.Response bodies.
 func (c *JSONCodec) Decode(data []byte, v interface{}) error {
 	if req, ok := v.(*protocol.Request); ok {
 		return c.decodeRequest(data, req)
@@ -46,6 +53,7 @@ func (c *JSONCodec) Decode(data []byte, v interface{}) error {
 	return json.Unmarshal(data, v)
 }
 
+// EncodeToWriter writes JSON to w using json.Encoder.
 func (c *JSONCodec) EncodeToWriter(w io.Writer, v interface{}) error {
 	encoder := json.NewEncoder(w)
 	if err := encoder.Encode(v); err != nil {
@@ -54,6 +62,7 @@ func (c *JSONCodec) EncodeToWriter(w io.Writer, v interface{}) error {
 	return nil
 }
 
+// DecodeFromReader reads JSON from r using json.Decoder.
 func (c *JSONCodec) DecodeFromReader(r io.Reader, v interface{}) error {
 	decoder := json.NewDecoder(r)
 	if err := decoder.Decode(v); err != nil {
@@ -304,6 +313,7 @@ func (c *JSONCodec) decodeResponse(data []byte, resp *protocol.Response) error {
 	return nil
 }
 
+// Name returns the codec name.
 func (c *JSONCodec) Name() string {
 	return "json"
 }
