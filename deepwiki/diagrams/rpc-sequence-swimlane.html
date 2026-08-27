@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RPCinGo Request Lifecycle — Swimlane Sequence</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: #020617;
+      min-height: 100vh;
+      padding: 2rem;
+      color: white;
+    }
+    .container { max-width: 1280px; margin: 0 auto; }
+    .header { margin-bottom: 2rem; }
+    .header-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; }
+    .pulse-dot {
+      width: 12px; height: 12px; background: #22d3ee;
+      border-radius: 50%; animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.025em; }
+    .subtitle { color: #94a3b8; font-size: 0.875rem; margin-left: 1.75rem; }
+    .diagram-container {
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 1rem;
+      border: 1px solid #1e293b;
+      padding: 1.5rem;
+      overflow-x: auto;
+    }
+    svg { width: 100%; min-width: 1100px; display: block; }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    .card {
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 0.75rem;
+      border: 1px solid #1e293b;
+      padding: 1.25rem;
+    }
+    .card-header {
+      display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;
+    }
+    .card-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .card-dot.cyan { background: #22d3ee; }
+    .card-dot.emerald { background: #34d399; }
+    .card-dot.violet { background: #a78bfa; }
+    .card-dot.amber { background: #fbbf24; }
+    .card-dot.rose { background: #fb7185; }
+    .card-dot.orange { background: #fb923c; }
+    .card h3 { font-size: 0.875rem; font-weight: 600; }
+    .card ul { list-style: none; color: #94a3b8; font-size: 0.75rem; }
+    .card li { margin-bottom: 0.375rem; }
+    .footer { text-align: center; margin-top: 1.5rem; color: #475569; font-size: 0.75rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-row">
+        <div class="pulse-dot"></div>
+        <h1>RPCinGo · Request Lifecycle</h1>
+      </div>
+      <p class="subtitle">Swimlane sequence — from Client.Call() through interceptor chains, transport, to service dispatch and back</p>
+    </div>
+
+    <div class="diagram-container">
+      <svg viewBox="0 0 1200 860">
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#94a3b8" />
+          </marker>
+          <marker id="arrowhead-dash" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
+          </marker>
+          <marker id="arrowhead-wire" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#a78bfa" />
+          </marker>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+          </pattern>
+        </defs>
+
+        <rect width="100%" height="100%" fill="url(#grid)" />
+
+        <!-- Side brackets: Client side / Server side -->
+        <rect x="20" y="50" width="770" height="800" rx="12" fill="rgba(34, 211, 238, 0.03)" stroke="#22d3ee" stroke-width="1" stroke-dasharray="8,4"/>
+        <text x="32" y="68" fill="#22d3ee" font-size="10" font-weight="600">CLIENT SIDE</text>
+
+        <rect x="800" y="50" width="380" height="800" rx="12" fill="rgba(52, 211, 153, 0.03)" stroke="#34d399" stroke-width="1" stroke-dasharray="8,4"/>
+        <text x="812" y="68" fill="#34d399" font-size="10" font-weight="600">SERVER SIDE</text>
+
+        <!-- =============== LANE HEADERS =============== -->
+        <!-- L1 Caller -->
+        <rect x="40" y="85" width="160" height="50" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="120" y="106" fill="white" font-size="11" font-weight="600" text-anchor="middle">Caller</text>
+        <text x="120" y="122" fill="#94a3b8" font-size="8" text-anchor="middle">app code · Client.Call</text>
+
+        <!-- L2 Client Interceptors -->
+        <rect x="210" y="85" width="160" height="50" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="290" y="106" fill="white" font-size="11" font-weight="600" text-anchor="middle">Client Interceptors</text>
+        <text x="290" y="122" fill="#94a3b8" font-size="8" text-anchor="middle">interceptor.Chain</text>
+
+        <!-- L3 LB/CB/Pool -->
+        <rect x="380" y="85" width="160" height="50" rx="6" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="460" y="106" fill="white" font-size="11" font-weight="600" text-anchor="middle">LB · CB · Pool</text>
+        <text x="460" y="122" fill="#94a3b8" font-size="8" text-anchor="middle">balancer+breaker+pool</text>
+
+        <!-- L4 TCP Client -->
+        <rect x="550" y="85" width="160" height="50" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="630" y="106" fill="white" font-size="11" font-weight="600" text-anchor="middle">TCP Client</text>
+        <text x="630" y="122" fill="#94a3b8" font-size="8" text-anchor="middle">transport/tcp</text>
+
+        <!-- L5 TCP Server -->
+        <rect x="810" y="85" width="160" height="50" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="890" y="106" fill="white" font-size="11" font-weight="600" text-anchor="middle">TCP Server</text>
+        <text x="890" y="122" fill="#94a3b8" font-size="8" text-anchor="middle">transport/tcp</text>
+
+        <!-- L6 Server Interceptors -->
+        <rect x="980" y="85" width="100" height="50" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="1030" y="106" fill="white" font-size="10" font-weight="600" text-anchor="middle">Server Intc</text>
+        <text x="1030" y="122" fill="#94a3b8" font-size="8" text-anchor="middle">Chain</text>
+
+        <!-- L7 Dispatch -->
+        <rect x="1090" y="85" width="90" height="50" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="1135" y="106" fill="white" font-size="10" font-weight="600" text-anchor="middle">Dispatch</text>
+        <text x="1135" y="122" fill="#94a3b8" font-size="8" text-anchor="middle">reflect</text>
+
+        <!-- =============== LIFELINES =============== -->
+        <line x1="120"  y1="135" x2="120"  y2="820" stroke="#475569" stroke-width="1" stroke-dasharray="3,4"/>
+        <line x1="290"  y1="135" x2="290"  y2="820" stroke="#475569" stroke-width="1" stroke-dasharray="3,4"/>
+        <line x1="460"  y1="135" x2="460"  y2="820" stroke="#475569" stroke-width="1" stroke-dasharray="3,4"/>
+        <line x1="630"  y1="135" x2="630"  y2="820" stroke="#475569" stroke-width="1" stroke-dasharray="3,4"/>
+        <line x1="890"  y1="135" x2="890"  y2="820" stroke="#475569" stroke-width="1" stroke-dasharray="3,4"/>
+        <line x1="1030" y1="135" x2="1030" y2="820" stroke="#475569" stroke-width="1" stroke-dasharray="3,4"/>
+        <line x1="1135" y1="135" x2="1135" y2="820" stroke="#475569" stroke-width="1" stroke-dasharray="3,4"/>
+
+        <!-- Time axis label -->
+        <text x="30" y="155" fill="#475569" font-size="8">t ↓</text>
+
+        <!-- =============== FORWARD PATH =============== -->
+
+        <!-- 1. Call -->
+        <line x1="122" y1="165" x2="288" y2="165" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <text x="205" y="160" fill="#e2e8f0" font-size="9" text-anchor="middle">1 · Call(ctx, method, req)</text>
+
+        <!-- Activation L2: client chain -->
+        <rect x="282" y="175" width="16" height="60" rx="2" fill="rgba(6, 78, 59, 0.6)" stroke="#34d399" stroke-width="1"/>
+        <text x="305" y="192" fill="#34d399" font-size="8">onion · outermost first</text>
+        <text x="305" y="205" fill="#94a3b8" font-size="8">tracing → retry →</text>
+        <text x="305" y="217" fill="#94a3b8" font-size="8">ratelimit → logging</text>
+        <text x="305" y="230" fill="#64748b" font-size="7">client.go:130</text>
+
+        <!-- 2. invoker → LB/CB/Pool -->
+        <line x1="298" y1="250" x2="458" y2="250" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <text x="378" y="245" fill="#e2e8f0" font-size="9" text-anchor="middle">2 · invoker(ctx, req)</text>
+
+        <!-- Activation L3 -->
+        <rect x="452" y="260" width="16" height="60" rx="2" fill="rgba(136, 19, 55, 0.6)" stroke="#fb7185" stroke-width="1"/>
+        <text x="475" y="277" fill="#fb7185" font-size="8">LB.Pick(instances)</text>
+        <text x="475" y="290" fill="#fb7185" font-size="8">CB.Allow()</text>
+        <text x="475" y="303" fill="#fb7185" font-size="8">PoolManager.Get(addr)</text>
+        <text x="475" y="316" fill="#64748b" font-size="7">rr/random/weighted/hash</text>
+
+        <!-- 3. tcp Send -->
+        <line x1="468" y1="335" x2="628" y2="335" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <text x="548" y="330" fill="#e2e8f0" font-size="9" text-anchor="middle">3 · conn.Send(req)</text>
+
+        <!-- Activation L4 -->
+        <rect x="622" y="345" width="16" height="72" rx="2" fill="rgba(76, 29, 149, 0.6)" stroke="#a78bfa" stroke-width="1"/>
+        <text x="645" y="362" fill="#a78bfa" font-size="8">assign RequestID</text>
+        <text x="645" y="375" fill="#a78bfa" font-size="8">codec.Encode (+compress)</text>
+        <text x="645" y="388" fill="#a78bfa" font-size="8">frame: 20B Header + Body</text>
+        <text x="645" y="401" fill="#a78bfa" font-size="8">register pendingRequests[id]</text>
+        <text x="645" y="414" fill="#64748b" font-size="7">serialized write chan</text>
+
+        <!-- 4. wire bytes → server -->
+        <line x1="638" y1="435" x2="888" y2="435" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrowhead-wire)"/>
+        <text x="763" y="428" fill="#a78bfa" font-size="9" text-anchor="middle" font-weight="600">4 · TCP wire · Header | Body</text>
+        <text x="763" y="450" fill="#64748b" font-size="7" text-anchor="middle">Magic·Ver·Type·Codec·Compress·ReqID·BodyLen</text>
+
+        <!-- Activation L5 -->
+        <rect x="882" y="460" width="16" height="60" rx="2" fill="rgba(76, 29, 149, 0.6)" stroke="#a78bfa" stroke-width="1"/>
+        <text x="905" y="477" fill="#a78bfa" font-size="8">read header/body</text>
+        <text x="905" y="490" fill="#a78bfa" font-size="8">conn sem · req sem</text>
+        <text x="905" y="503" fill="#a78bfa" font-size="8">codec.Decode</text>
+        <text x="905" y="516" fill="#64748b" font-size="7">server.go</text>
+
+        <!-- 5. handler → server chain -->
+        <line x1="898" y1="538" x2="1028" y2="538" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <text x="963" y="533" fill="#e2e8f0" font-size="9" text-anchor="middle">5 · handler(ctx,req)</text>
+
+        <!-- Activation L6 -->
+        <rect x="1022" y="548" width="16" height="72" rx="2" fill="rgba(6, 78, 59, 0.6)" stroke="#34d399" stroke-width="1"/>
+        <text x="1030" y="642" fill="#34d399" font-size="7" text-anchor="middle">recovery→logging</text>
+        <text x="1030" y="653" fill="#34d399" font-size="7" text-anchor="middle">→metrics→ratelimit</text>
+        <text x="1030" y="664" fill="#34d399" font-size="7" text-anchor="middle">→tracing</text>
+
+        <!-- 6. dispatch -->
+        <line x1="1038" y1="585" x2="1133" y2="585" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <text x="1085" y="580" fill="#e2e8f0" font-size="8" text-anchor="middle">6 · invoke</text>
+
+        <!-- Activation L7 -->
+        <rect x="1127" y="595" width="16" height="40" rx="2" fill="rgba(8, 51, 68, 0.6)" stroke="#22d3ee" stroke-width="1"/>
+        <text x="1135" y="612" fill="#22d3ee" font-size="7" text-anchor="middle">reflect</text>
+        <text x="1135" y="623" fill="#22d3ee" font-size="7" text-anchor="middle">Method.Call</text>
+
+        <!-- =============== RETURN PATH (dashed) =============== -->
+
+        <!-- 7. dispatch → server intc -->
+        <line x1="1127" y1="655" x2="1038" y2="655" stroke="#64748b" stroke-width="1.3" stroke-dasharray="5,3" marker-end="url(#arrowhead-dash)"/>
+        <text x="1085" y="649" fill="#94a3b8" font-size="8" text-anchor="middle">7 · resp, err</text>
+
+        <!-- 8. server chain → tcp server -->
+        <line x1="1022" y1="685" x2="898" y2="685" stroke="#64748b" stroke-width="1.3" stroke-dasharray="5,3" marker-end="url(#arrowhead-dash)"/>
+        <text x="960" y="679" fill="#94a3b8" font-size="8" text-anchor="middle">8 · response</text>
+
+        <!-- 9. wire back -->
+        <line x1="888" y1="715" x2="638" y2="715" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arrowhead-wire)"/>
+        <text x="763" y="708" fill="#a78bfa" font-size="9" text-anchor="middle" font-weight="600">9 · TCP wire · Header | Body (ReqID)</text>
+
+        <!-- 10. route via pendingRequests → LB/CB/Pool lane -->
+        <line x1="622" y1="745" x2="468" y2="745" stroke="#64748b" stroke-width="1.3" stroke-dasharray="5,3" marker-end="url(#arrowhead-dash)"/>
+        <text x="545" y="739" fill="#94a3b8" font-size="8" text-anchor="middle">10 · pendingRequests[ReqID] ← resp</text>
+
+        <!-- small L3 activation -->
+        <rect x="452" y="755" width="16" height="18" rx="2" fill="rgba(136, 19, 55, 0.6)" stroke="#fb7185" stroke-width="1"/>
+        <text x="475" y="767" fill="#fb7185" font-size="7">CB.Record · pool.Put</text>
+
+        <!-- 11. back to client chain -->
+        <line x1="452" y1="790" x2="298" y2="790" stroke="#64748b" stroke-width="1.3" stroke-dasharray="5,3" marker-end="url(#arrowhead-dash)"/>
+        <text x="375" y="784" fill="#94a3b8" font-size="8" text-anchor="middle">11 · resp, err</text>
+
+        <!-- 12. back to caller -->
+        <line x1="282" y1="812" x2="122" y2="812" stroke="#64748b" stroke-width="1.3" stroke-dasharray="5,3" marker-end="url(#arrowhead-dash)"/>
+        <text x="200" y="806" fill="#94a3b8" font-size="8" text-anchor="middle">12 · resp, err (unwind)</text>
+
+      </svg>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot emerald"></div>
+          <h3>Interceptor Chains · onion model</h3>
+        </div>
+        <ul>
+          <li>• Client: tracing → retry → ratelimit → logging</li>
+          <li>• Server: recovery → logging → metrics → ratelimit → tracing</li>
+          <li>• Shared Chain builder — interceptor.NewChain</li>
+          <li>• First registered = outermost wrapper</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot violet"></div>
+          <h3>Wire Protocol · 20B header + body</h3>
+        </div>
+        <ul>
+          <li>• Magic 2B · Version 1B · MsgType 1B</li>
+          <li>• Codec 1B · Compress 1B · Reserved 2B</li>
+          <li>• RequestID 8B · BodyLen 4B</li>
+          <li>• RequestID enables out-of-order multiplex</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot rose"></div>
+          <h3>CircuitBreaker FSM · parallel chain</h3>
+        </div>
+        <ul>
+          <li>• Closed → Open: failure rate &gt; threshold</li>
+          <li>• Open → HalfOpen: Timeout elapses</li>
+          <li>• HalfOpen → Closed: SuccessThreshold hits</li>
+          <li>• 10-bucket sliding window metrics</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot amber"></div>
+          <h3>Discovery chain · etcd</h3>
+        </div>
+        <ul>
+          <li>• Registry.Register + lease KeepAlive</li>
+          <li>• Watcher pushes instance changes</li>
+          <li>• PoolManager maintains pool-per-address</li>
+          <li>• LoadBalancer.Pick selects instance</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>Codec chain · decorator</h3>
+        </div>
+        <ul>
+          <li>• CompressedCodec wraps base Codec</li>
+          <li>• Gzip / Snappy compression layers</li>
+          <li>• JSON / Protobuf base codecs</li>
+          <li>• Selection driven by header bytes</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot orange"></div>
+          <h3>TCP concurrency gates</h3>
+        </div>
+        <ul>
+          <li>• Connection-count semaphore</li>
+          <li>• In-flight request semaphore</li>
+          <li>• Single persistent client connection</li>
+          <li>• Writes serialized via channel</li>
+        </ul>
+      </div>
+    </div>
+
+    <p class="footer">
+      RPCinGo · request lifecycle swimlane · pkg/{client,interceptor,loadbalancer,circuitbreaker,pool,transport,server,codec,protocol}
+    </p>
+  </div>
+</body>
+</html>
