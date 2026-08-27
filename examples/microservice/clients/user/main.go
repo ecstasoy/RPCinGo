@@ -27,11 +27,13 @@ func main() {
 	}
 	defer etcdDisc.Close()
 
-	fmt.Println("=== UserService Client Demo ===\n")
+	fmt.Println("=== UserService Client Demo ===")
+	fmt.Println()
 
 	fmt.Println("⚠️  Note: Start the server first!")
 	fmt.Println("Run: cd ../services/user && go run main.go")
-	fmt.Println("Wait 1-2 seconds for server to register, then press Enter...\n")
+	fmt.Println("Wait 1-2 seconds for server to register, then press Enter...")
+	fmt.Println()
 
 	fmt.Print("Press Enter to continue...")
 	fmt.Scanln()
