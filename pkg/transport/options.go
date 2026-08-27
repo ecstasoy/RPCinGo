@@ -2,8 +2,8 @@ package transport
 
 import "time"
 
-// ------------------- Client Options -------------------
-
+// ClientOptions groups transport-level client tuning knobs. Concrete transport
+// implementations may honor only the subset they support.
 type ClientOptions struct {
 	DialTimeout         time.Duration
 	KeepAlive           bool
@@ -17,6 +17,7 @@ type ClientOptions struct {
 	RetryInterval       time.Duration
 }
 
+// DefaultClientOptions returns the default transport client settings.
 func DefaultClientOptions() *ClientOptions {
 	return &ClientOptions{
 		DialTimeout:     5 * time.Second,
@@ -35,26 +36,31 @@ func DefaultClientOptions() *ClientOptions {
 	}
 }
 
+// ClientOption mutates ClientOptions.
 type ClientOption func(*ClientOptions)
 
+// WithDialTimeout sets the connection establishment timeout.
 func WithDialTimeout(timeout time.Duration) ClientOption {
 	return func(opts *ClientOptions) {
 		opts.DialTimeout = timeout
 	}
 }
 
+// WithReadTimeout sets the per-read deadline for transports that support it.
 func WithReadTimeout(timeout time.Duration) ClientOption {
 	return func(opts *ClientOptions) {
 		opts.ReadTimeout = timeout
 	}
 }
 
+// WithWriteTimeout sets the per-write deadline for transports that support it.
 func WithWriteTimeout(timeout time.Duration) ClientOption {
 	return func(opts *ClientOptions) {
 		opts.WriteTimeout = timeout
 	}
 }
 
+// WithKeepAlive configures keepalive behavior for transports that support it.
 func WithKeepAlive(keepAlive bool, period time.Duration) ClientOption {
 	return func(opts *ClientOptions) {
 		opts.KeepAlive = keepAlive
@@ -62,6 +68,7 @@ func WithKeepAlive(keepAlive bool, period time.Duration) ClientOption {
 	}
 }
 
+// WithRetry records transport-level retry settings in ClientOptions.
 func WithRetry(maxRetries int, interval time.Duration) ClientOption {
 	return func(opts *ClientOptions) {
 		opts.MaxRetries = maxRetries
@@ -69,6 +76,8 @@ func WithRetry(maxRetries int, interval time.Duration) ClientOption {
 	}
 }
 
+// WithBufferSize sets socket read and write buffer sizes for transports that
+// support them.
 func WithBufferSize(readSize, writeSize int) ClientOption {
 	return func(opts *ClientOptions) {
 		opts.ReadBufferSize = readSize
@@ -76,8 +85,8 @@ func WithBufferSize(readSize, writeSize int) ClientOption {
 	}
 }
 
-// ------------------- Server Options -------------------
-
+// ServerOptions groups transport-level server tuning knobs used by concrete
+// server implementations such as TCP.
 type ServerOptions struct {
 	ReadTimeout           time.Duration
 	WriteTimeout          time.Duration
@@ -90,6 +99,7 @@ type ServerOptions struct {
 	MaxConnections        int
 }
 
+// DefaultServerOptions returns the default transport server settings.
 func DefaultServerOptions() *ServerOptions {
 	return &ServerOptions{
 		ReadTimeout:           10 * time.Second,
@@ -104,8 +114,10 @@ func DefaultServerOptions() *ServerOptions {
 	}
 }
 
+// ServerOption mutates ServerOptions.
 type ServerOption func(*ServerOptions)
 
+// WithServerTimeout sets transport-level read and write deadlines.
 func WithServerTimeout(read, write time.Duration) ServerOption {
 	return func(opts *ServerOptions) {
 		opts.ReadTimeout = read
@@ -113,24 +125,31 @@ func WithServerTimeout(read, write time.Duration) ServerOption {
 	}
 }
 
+// WithHandlerTimeout limits how long a request handler may run; zero disables
+// the limit.
 func WithHandlerTimeout(timeout time.Duration) ServerOption {
 	return func(opts *ServerOptions) {
 		opts.HandlerTimeout = timeout
 	}
 }
 
+// WithMaxConcurrentRequests limits the number of handlers that may run at the
+// same time; zero disables the limit.
 func WithMaxConcurrentRequests(maxConcurrentRequests int) ServerOption {
 	return func(opts *ServerOptions) {
 		opts.MaxConcurrentRequests = maxConcurrentRequests
 	}
 }
 
+// WithWorkerPool sets the worker-pool size used by the transport.
 func WithWorkerPool(size int) ServerOption {
 	return func(opts *ServerOptions) {
 		opts.WorkerPoolSize = size
 	}
 }
 
+// WithServerBufferSize sets socket read and write buffer sizes for transports
+// that support them.
 func WithServerBufferSize(readSize, writeSize int) ServerOption {
 	return func(opts *ServerOptions) {
 		opts.ReadBufferSize = readSize
@@ -138,6 +157,7 @@ func WithServerBufferSize(readSize, writeSize int) ServerOption {
 	}
 }
 
+// WithMaxRequestBodySize rejects requests whose encoded body exceeds size.
 func WithMaxRequestBodySize(size int64) ServerOption {
 	return func(opts *ServerOptions) {
 		opts.MaxRequestBodySize = size
