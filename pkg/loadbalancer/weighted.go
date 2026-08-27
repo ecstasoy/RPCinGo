@@ -9,6 +9,8 @@ import (
 	"RPCinGo/pkg/registry"
 )
 
+// WeightedRoundRobin repeats instances according to their weight and rotates
+// across the expanded sequence.
 type WeightedRoundRobin struct {
 	instances []*registry.ServiceInstance
 	weights   []int
@@ -17,10 +19,12 @@ type WeightedRoundRobin struct {
 	mu      sync.Mutex
 }
 
+// NewWeightedRoundRobin returns a weighted round-robin balancer.
 func NewWeightedRoundRobin() LoadBalancer {
 	return &WeightedRoundRobin{}
 }
 
+// Pick returns the next instance from the weighted round-robin schedule.
 func (wrr *WeightedRoundRobin) Pick(ctx context.Context, instances []*registry.ServiceInstance) (*registry.ServiceInstance, error) {
 	if len(instances) == 0 {
 		return nil, ErrNoInstances
@@ -79,6 +83,7 @@ func (wrr *WeightedRoundRobin) isSameInstances(instances []*registry.ServiceInst
 	return true
 }
 
+// Name returns the balancer name.
 func (wrr *WeightedRoundRobin) Name() string {
 	return "weighted-round-robin"
 }

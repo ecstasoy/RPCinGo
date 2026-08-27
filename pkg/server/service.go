@@ -14,14 +14,18 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// MethodHandler handles a decoded RPC request for one registered service
+// method.
 type MethodHandler func(ctx context.Context, req *protocol.Request) (interface{}, error)
 
+// Service stores method handlers registered under a single service name.
 type Service struct {
 	name    string
 	methods map[string]MethodHandler
 	mu      sync.RWMutex
 }
 
+// NewService returns an empty Service ready for method registration.
 func NewService(name string) *Service {
 	return &Service{
 		name:    name,
@@ -29,6 +33,8 @@ func NewService(name string) *Service {
 	}
 }
 
+// RegisterMethod registers handler under method and rejects duplicate method
+// names within the same service.
 func (s *Service) RegisterMethod(method string, handler MethodHandler) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -41,6 +47,7 @@ func (s *Service) RegisterMethod(method string, handler MethodHandler) error {
 	return nil
 }
 
+// GetMethod returns the handler registered for method.
 func (s *Service) GetMethod(method string) (MethodHandler, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -49,6 +56,7 @@ func (s *Service) GetMethod(method string) (MethodHandler, bool) {
 	return handler, ok
 }
 
+// Methods returns the registered method names for the service.
 func (s *Service) Methods() []string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -60,6 +68,7 @@ func (s *Service) Methods() []string {
 	return methods
 }
 
+// ServiceRegistry maintains the server's service and method lookup table.
 type ServiceRegistry struct {
 	services map[string]*Service
 	mu       sync.RWMutex
@@ -71,6 +80,8 @@ func newServiceRegistry() *ServiceRegistry {
 	}
 }
 
+// RegisterMethod registers handler under service and method, creating the
+// service entry on first use.
 func (sr *ServiceRegistry) RegisterMethod(service, method string, handler MethodHandler) error {
 	sr.mu.Lock()
 	defer sr.mu.Unlock()
@@ -84,6 +95,7 @@ func (sr *ServiceRegistry) RegisterMethod(service, method string, handler Method
 	return svc.RegisterMethod(method, handler)
 }
 
+// GetHandler resolves a registered handler for service and method.
 func (sr *ServiceRegistry) GetHandler(service, method string) (MethodHandler, error) {
 	sr.mu.RLock()
 	defer sr.mu.RUnlock()
@@ -101,6 +113,7 @@ func (sr *ServiceRegistry) GetHandler(service, method string) (MethodHandler, er
 	return handler, nil
 }
 
+// Services returns the registered service names.
 func (sr *ServiceRegistry) Services() []string {
 	sr.mu.RLock()
 	defer sr.mu.RUnlock()
@@ -112,6 +125,15 @@ func (sr *ServiceRegistry) Services() []string {
 	return services
 }
 
+// RegisterService reflects over serviceImpl and registers every exported method
+// that matches one of the supported RPC forms:
+//
+//	func(args any) (any, error)
+//	func(ctx context.Context, args any) (any, error)
+//	func(ctx context.Context, req *Req) (*Resp, error)
+//
+// serviceImpl must be a pointer to struct, and RegisterService returns an
+// error if no eligible methods are found.
 func (sr *ServiceRegistry) RegisterService(serviceName string, serviceImpl any) error {
 	if serviceImpl == nil {
 		return fmt.Errorf("service implementation is nil")

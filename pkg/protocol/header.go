@@ -7,19 +7,23 @@ import (
 	"fmt"
 )
 
+// HeaderLength and related constants define the fixed RPC frame header layout.
 const (
 	HeaderLength         = 20
 	ProtocolMagic        = 0xCAFE
 	ProtocolVersion byte = 0x01
 )
 
+// MessageType identifies whether a frame carries a request or a response.
 type MessageType byte
 
+// MessageType values distinguish request and response frames.
 const (
 	MsgTypeRequest  MessageType = 0x01
 	MsgTypeResponse MessageType = 0x02
 )
 
+// String returns the symbolic name of the message type.
 func (t MessageType) String() string {
 	switch t {
 	case MsgTypeRequest:
@@ -31,14 +35,17 @@ func (t MessageType) String() string {
 	}
 }
 
+// CodecType identifies the payload codec recorded in a frame header.
 type CodecType byte
 
+// CodecType values advertise the body encoding used for a frame payload.
 const (
 	CodecTypeJSON     CodecType = 0x00
 	CodecTypeProtobuf CodecType = 0x01
 	CodecTypeMsgPack  CodecType = 0x02
 )
 
+// String returns the symbolic name of the codec type.
 func (t CodecType) String() string {
 	switch t {
 	case CodecTypeJSON:
@@ -52,14 +59,18 @@ func (t CodecType) String() string {
 	}
 }
 
+// CompressType identifies the compression algorithm recorded in a frame
+// header.
 type CompressType byte
 
+// CompressType values advertise how the frame payload was compressed.
 const (
 	CompressTypeNone   CompressType = 0x00
 	CompressTypeGzip   CompressType = 0x01
 	CompressTypeSnappy CompressType = 0x02
 )
 
+// String returns the symbolic name of the compression type.
 func (t CompressType) String() string {
 	switch t {
 	case CompressTypeNone:
@@ -71,15 +82,15 @@ func (t CompressType) String() string {
 	}
 }
 
-// Header Structure
-// Fixed length: 20 bytes
+// Header is the fixed-length prefix that precedes every encoded request and
+// response body.
 //
-// Byte layout:
-//   0  1  2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 17 18 19
-//  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-//  |Magic |Ver|Typ|Cod|Cmp|Reserv |    Request ID     |BodyLen |
-//  +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-
+// Layout (20 bytes):
+//
+//	 0  1  2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 17 18 19
+//	+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+//	|Magic |Ver|Typ|Cod|Cmp|Reserv |    Request ID     |BodyLen |
+//	+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
 type Header struct {
 	Magic      uint16
 	Version    byte
@@ -91,6 +102,8 @@ type Header struct {
 	BodyLength uint32
 }
 
+// NewHeader constructs a Header initialized with the protocol magic, version,
+// and the supplied routing fields.
 func NewHeader(msgType MessageType, codec CodecType, requestID uint64, bodyLen uint32) *Header {
 	return &Header{
 		Magic:      ProtocolMagic,
@@ -104,6 +117,7 @@ func NewHeader(msgType MessageType, codec CodecType, requestID uint64, bodyLen u
 	}
 }
 
+// Encode serializes the header into its fixed 20-byte wire representation.
 func (h *Header) Encode() []byte {
 	buf := make([]byte, HeaderLength)
 
@@ -122,6 +136,8 @@ func (h *Header) Encode() []byte {
 	return buf
 }
 
+// Decode parses the fixed-size wire representation into h and validates the
+// magic number and protocol version.
 func (h *Header) Decode(buf []byte) error {
 	if len(buf) < HeaderLength {
 		return fmt.Errorf("invalid header length: %d, expected: %d", len(buf), HeaderLength)
@@ -148,6 +164,7 @@ func (h *Header) Decode(buf []byte) error {
 	return nil
 }
 
+// String returns a compact human-readable summary of the header.
 func (h *Header) String() string {
 	return fmt.Sprintf(
 		"Header{Magic=0x%X, Version=%d, Type=%d, Codec=%d, Compress=%d, RequestID=%d, BodyLen=%d}",

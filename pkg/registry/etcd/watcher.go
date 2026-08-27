@@ -17,6 +17,8 @@ type etcdWatcher struct {
 	cancel  context.CancelFunc
 }
 
+// Next blocks until the next etcd watch event can be translated into a
+// registry.Event.
 func (ew *etcdWatcher) Next() (*registry.Event, error) {
 	for {
 		select {
@@ -56,6 +58,7 @@ func (ew *etcdWatcher) Next() (*registry.Event, error) {
 	}
 }
 
+// Stop cancels the underlying etcd watch and unblocks Next.
 func (ew *etcdWatcher) Stop() {
 	ew.cancel()
 	close(ew.stopCh)

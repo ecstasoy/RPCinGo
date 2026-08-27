@@ -12,11 +12,14 @@ import (
 	"time"
 )
 
+// ErrCircuitOpen and ErrTooManyRequests are returned when the breaker rejects a
+// call.
 var (
 	ErrCircuitOpen     = errors.New("circuit breaker is open")
 	ErrTooManyRequests = errors.New("too many requests")
 )
 
+// Config tunes the circuit breaker's thresholds and timings.
 type Config struct {
 	MaxRequests      uint32
 	MinRequests      uint32
@@ -26,6 +29,7 @@ type Config struct {
 	SuccessThreshold uint32
 }
 
+// DefaultConfig returns a conservative default circuit-breaker configuration.
 func DefaultConfig() *Config {
 	return &Config{
 		MaxRequests:      1,
@@ -37,6 +41,8 @@ func DefaultConfig() *Config {
 	}
 }
 
+// CircuitBreaker guards a downstream call path using a sliding-window failure
+// rate.
 type CircuitBreaker struct {
 	config *Config
 	state  State
@@ -49,6 +55,8 @@ type CircuitBreaker struct {
 	mu sync.RWMutex
 }
 
+// New returns a CircuitBreaker configured with config or DefaultConfig when
+// config is nil.
 func New(config *Config) *CircuitBreaker {
 	if config == nil {
 		config = DefaultConfig()
@@ -66,6 +74,7 @@ func New(config *Config) *CircuitBreaker {
 	}
 }
 
+// Call executes fn if the breaker allows it and records the outcome.
 func (cb *CircuitBreaker) Call(ctx context.Context, fn func() (any, error)) (any, error) {
 	if err := cb.beforeCall(); err != nil {
 		return nil, err
@@ -77,6 +86,7 @@ func (cb *CircuitBreaker) Call(ctx context.Context, fn func() (any, error)) (any
 	return result, err
 }
 
+// CallResponse is a typed helper around Call for RPC response functions.
 func (cb *CircuitBreaker) CallResponse(ctx context.Context, fn func() (*protocol.Response, error)) (*protocol.Response, error) {
 	v, err := cb.Call(ctx, func() (interface{}, error) {
 		return fn()
@@ -173,12 +183,14 @@ func (cb *CircuitBreaker) onSuccess() {
 	}
 }
 
+// State returns the current breaker state.
 func (cb *CircuitBreaker) State() State {
 	cb.mu.RLock()
 	defer cb.mu.RUnlock()
 	return cb.state
 }
 
+// Stats returns the current state and aggregated failure rate.
 func (cb *CircuitBreaker) Stats() (state State, failureRate float64) {
 	cb.mu.RLock()
 	defer cb.mu.RUnlock()

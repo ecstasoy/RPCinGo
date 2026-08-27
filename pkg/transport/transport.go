@@ -10,6 +10,7 @@ import (
 	"time"
 )
 
+// ClientTransport is the transport abstraction used by RPC clients.
 type ClientTransport interface {
 	Dial(ctx context.Context, addr string) error
 	SendRequest(ctx context.Context, req *protocol.Request) (*protocol.Response, error)
@@ -19,6 +20,7 @@ type ClientTransport interface {
 	RemoteAddr() net.Addr
 }
 
+// ServerTransport is the transport abstraction used by RPC servers.
 type ServerTransport interface {
 	Listen(ctx context.Context, addr string) error
 	Serve(ctx context.Context, handler Handler) error
@@ -26,9 +28,11 @@ type ServerTransport interface {
 	Addr() net.Addr
 }
 
+// Handler processes one decoded request and returns its response.
 type Handler func(ctx context.Context, req *protocol.Request) (*protocol.Response, error)
 
 // Connection embeds io.ReadWriter and io.Closer to use std interfaces for network connections
+// while exposing standard network deadline and address methods.
 type Connection interface {
 	io.ReadWriter
 	io.Closer

@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// ServiceInstance describes one reachable service endpoint in a registry.
 type ServiceInstance struct {
 	ID       string
 	Service  string
@@ -21,8 +22,11 @@ type ServiceInstance struct {
 	UpdateTime   time.Time
 }
 
+// InstanceStatus describes the lifecycle state of a registered service
+// instance.
 type InstanceStatus int
 
+// ServiceInstance status values.
 const (
 	StatusUnknown InstanceStatus = iota
 	StatusUp
@@ -30,6 +34,7 @@ const (
 	StatusStarting
 )
 
+// String returns the symbolic status name.
 func (s InstanceStatus) String() string {
 	switch s {
 	case StatusUp:
@@ -43,6 +48,8 @@ func (s InstanceStatus) String() string {
 	}
 }
 
+// NewServiceInstance constructs a healthy service instance with generated ID,
+// default weight, and initialized metadata.
 func NewServiceInstance(service, address string, port int) *ServiceInstance {
 	return &ServiceInstance{
 		ID:           fmt.Sprintf("%s-%s:%d-%d", service, address, port, time.Now().Unix()),
@@ -57,6 +64,7 @@ func NewServiceInstance(service, address string, port int) *ServiceInstance {
 	}
 }
 
+// Endpoint returns "host:port" for the instance.
 func (si *ServiceInstance) Endpoint() string {
 	return fmt.Sprintf("%s:%d", si.Address, si.Port)
 }

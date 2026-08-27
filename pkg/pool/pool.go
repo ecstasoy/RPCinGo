@@ -15,8 +15,7 @@ import (
 	"RPCinGo/pkg/transport/tcp"
 )
 
-// ----------------- Pool Options & Options -----------------
-
+// PoolOptions configures a ConnectionPool.
 type PoolOptions struct {
 	MaxSize             int
 	MinSize             int
@@ -37,6 +36,8 @@ type PoolOptions struct {
 	Logger            logger.Logger
 }
 
+// DefaultPoolOptions returns validated default settings for a new
+// ConnectionPool.
 func DefaultPoolOptions() *PoolOptions {
 	return &PoolOptions{
 		MaxSize:             100,
@@ -55,8 +56,10 @@ func DefaultPoolOptions() *PoolOptions {
 	}
 }
 
+// PoolOption mutates PoolOptions before a pool is created.
 type PoolOption func(*PoolOptions)
 
+// WithPoolSize sets the maximum and minimum number of managed connections.
 func WithPoolSize(max, min int) PoolOption {
 	return func(opts *PoolOptions) {
 		opts.MaxSize = max
@@ -64,24 +67,32 @@ func WithPoolSize(max, min int) PoolOption {
 	}
 }
 
+// WithIdleTimeout sets how long an idle connection may sit unused before it is
+// considered expired.
 func WithIdleTimeout(timeout time.Duration) PoolOption {
 	return func(opts *PoolOptions) {
 		opts.MaxIdleTime = timeout
 	}
 }
 
+// WithMaxLifetime sets the maximum age of a connection before it is rotated
+// out of the pool.
 func WithMaxLifetime(lifetime time.Duration) PoolOption {
 	return func(opts *PoolOptions) {
 		opts.MaxLifetime = lifetime
 	}
 }
 
+// WithCleanupInterval sets how often the background cleanup routine scans for
+// expired connections.
 func WithCleanupInterval(interval time.Duration) PoolOption {
 	return func(opts *PoolOptions) {
 		opts.CleanupInterval = interval
 	}
 }
 
+// WithPoolCodec selects the codec and compression settings used for new pooled
+// connections.
 func WithPoolCodec(codecType protocol.CodecType, compressType protocol.CompressType) PoolOption {
 	return func(opts *PoolOptions) {
 		opts.CodecType = codecType
@@ -89,6 +100,8 @@ func WithPoolCodec(codecType protocol.CodecType, compressType protocol.CompressT
 	}
 }
 
+// WithHealthCheck enables or disables periodic health checks for idle
+// connections.
 func WithHealthCheck(enable bool, interval time.Duration) PoolOption {
 	return func(opts *PoolOptions) {
 		opts.EnableHealthCheck = enable
@@ -96,37 +109,45 @@ func WithHealthCheck(enable bool, interval time.Duration) PoolOption {
 	}
 }
 
+// WithConnectionFactory overrides the factory used to create new pooled
+// connections.
 func WithConnectionFactory(factory ConnectionFactory) PoolOption {
 	return func(opts *PoolOptions) {
 		opts.ConnectionFactory = factory
 	}
 }
 
+// WithPoolValidator overrides the validator used before pool construction.
 func WithPoolValidator(validator PoolValidator) PoolOption {
 	return func(opts *PoolOptions) {
 		opts.Validator = validator
 	}
 }
 
+// WithWaitTimeout sets how long pool acquisition waits once the pool reaches
+// MaxSize.
 func WithWaitTimeout(timeout time.Duration) PoolOption {
 	return func(opts *PoolOptions) {
 		opts.WaitTimeout = timeout
 	}
 }
 
+// WithPoolLogger sets the logger used by pool internals.
 func WithPoolLogger(l logger.Logger) PoolOption {
 	return func(opts *PoolOptions) {
 		opts.Logger = l
 	}
 }
 
-// ----------------- Connection Factory -----------------
-
+// ConnectionFactory creates and validates transport clients used by a
+// ConnectionPool.
 type ConnectionFactory interface {
 	Create(address string) (*tcp.Client, error)
 	Validate() error
 }
 
+// DefaultConnectionFactory builds TCP clients using the standard transport
+// options derived from PoolOptions.
 type DefaultConnectionFactory struct {
 	codecType       protocol.CodecType
 	compressType    protocol.CompressType
@@ -136,6 +157,8 @@ type DefaultConnectionFactory struct {
 	clientOptions   []transport.ClientOption
 }
 
+// NewDefaultConnectionFactory returns the default ConnectionFactory used by
+// NewConnectionPool.
 func NewDefaultConnectionFactory(
 	codecType protocol.CodecType,
 	compressType protocol.CompressType,
@@ -150,6 +173,7 @@ func NewDefaultConnectionFactory(
 	}
 }
 
+// Create dials address and returns a connected TCP client.
 func (f *DefaultConnectionFactory) Create(address string) (*tcp.Client, error) {
 	final := append([]transport.ClientOption{}, f.clientOptions...)
 	final = append(final,
@@ -169,6 +193,7 @@ func (f *DefaultConnectionFactory) Create(address string) (*tcp.Client, error) {
 	return client, nil
 }
 
+// Validate checks that the factory configuration is usable.
 func (f *DefaultConnectionFactory) Validate() error {
 	if f.dialTimeout <= 0 {
 		return fmt.Errorf("dialTimeout must be > 0")
@@ -176,20 +201,21 @@ func (f *DefaultConnectionFactory) Validate() error {
 	return nil
 }
 
-// ClientOptions allows setting additional Client options.
-
+// SetClientOptions replaces the additional transport client options applied to
+// newly created connections.
 func (f *DefaultConnectionFactory) SetClientOptions(opts ...transport.ClientOption) {
 	f.clientOptions = opts
 }
 
-// ----------------- Retry Connection Factory -----------------
-
+// RetryConnectionFactory retries connection creation on top of another
+// ConnectionFactory.
 type RetryConnectionFactory struct {
 	baseFactory   ConnectionFactory
 	maxRetries    int
 	retryInterval time.Duration
 }
 
+// NewRetryConnectionFactory wraps baseFactory with simple retry logic.
 func NewRetryConnectionFactory(
 	baseFactory ConnectionFactory,
 	maxRetries int,
@@ -202,6 +228,8 @@ func NewRetryConnectionFactory(
 	}
 }
 
+// Create retries baseFactory.Create until it succeeds or the retry budget is
+// exhausted.
 func (f *RetryConnectionFactory) Create(address string) (*tcp.Client, error) {
 	var lastErr error
 
@@ -222,6 +250,7 @@ func (f *RetryConnectionFactory) Create(address string) (*tcp.Client, error) {
 		f.maxRetries, lastErr)
 }
 
+// Validate validates the wrapped factory.
 func (f *RetryConnectionFactory) Validate() error {
 	if f.baseFactory == nil {
 		return fmt.Errorf("baseFactory is nil")
@@ -229,20 +258,22 @@ func (f *RetryConnectionFactory) Validate() error {
 	return f.baseFactory.Validate()
 }
 
-// ------------------ Mock Connection Factory ------------------
-
+// MockConnectionFactory is a test-oriented ConnectionFactory with injectable
+// behavior.
 type MockConnectionFactory struct {
 	createFunc func(address string) (*tcp.Client, error)
 	callCount  int
 	mu         sync.Mutex
 }
 
+// NewMockConnectionFactory returns a MockConnectionFactory backed by createFunc.
 func NewMockConnectionFactory(createFunc func(string) (*tcp.Client, error)) ConnectionFactory {
 	return &MockConnectionFactory{
 		createFunc: createFunc,
 	}
 }
 
+// Create records the call and delegates to createFunc when provided.
 func (f *MockConnectionFactory) Create(address string) (*tcp.Client, error) {
 	f.mu.Lock()
 	f.callCount++
@@ -255,24 +286,27 @@ func (f *MockConnectionFactory) Create(address string) (*tcp.Client, error) {
 	return nil, fmt.Errorf("mock: no Client")
 }
 
+// Validate always succeeds for the mock factory.
 func (f *MockConnectionFactory) Validate() error {
 	return nil
 }
 
+// CallCount returns how many times Create has been called.
 func (f *MockConnectionFactory) CallCount() int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.callCount
 }
 
-// ----------------- Pool Validator -----------------
-
+// PoolValidator validates pool configuration before construction.
 type PoolValidator interface {
 	Validate(opts *PoolOptions) error
 }
 
+// DefaultPoolValidator performs the built-in pool configuration checks.
 type DefaultPoolValidator struct{}
 
+// Validate checks PoolOptions for invalid or suspicious configuration values.
 func (v *DefaultPoolValidator) Validate(opts *PoolOptions) error {
 	if opts.MaxSize <= 0 {
 		return fmt.Errorf("MaxSize must be > 0, got %d", opts.MaxSize)
@@ -356,8 +390,7 @@ func (v *DefaultPoolValidator) Validate(opts *PoolOptions) error {
 	return nil
 }
 
-// ----------------- Pooled Connection -----------------
-
+// PooledConnection wraps a TCP client tracked by a ConnectionPool.
 type PooledConnection struct {
 	Client    *tcp.Client
 	pool      *ConnectionPool
@@ -379,6 +412,8 @@ func newPooledConnection(client *tcp.Client, pool *ConnectionPool) *PooledConnec
 	}
 }
 
+// SendRequest forwards req through the underlying client while updating usage
+// metadata.
 func (pc *PooledConnection) SendRequest(ctx context.Context, req *protocol.Request) (*protocol.Response, error) {
 	pc.mu.Lock()
 
@@ -395,6 +430,7 @@ func (pc *PooledConnection) SendRequest(ctx context.Context, req *protocol.Reque
 	return pc.Client.SendRequest(ctx, req)
 }
 
+// IsHealthy reports whether the pooled connection is still open and connected.
 func (pc *PooledConnection) IsHealthy() bool {
 	pc.mu.Lock()
 	defer pc.mu.Unlock()
@@ -410,6 +446,8 @@ func (pc *PooledConnection) IsHealthy() bool {
 	return true
 }
 
+// IsExpired reports whether the connection exceeded the idle or lifetime
+// limits.
 func (pc *PooledConnection) IsExpired(maxIdleTime, maxLifetime time.Duration) bool {
 	pc.mu.Lock()
 	defer pc.mu.Unlock()
@@ -427,6 +465,7 @@ func (pc *PooledConnection) IsExpired(maxIdleTime, maxLifetime time.Duration) bo
 	return false
 }
 
+// Close permanently closes the underlying client.
 func (pc *PooledConnection) Close() error {
 	pc.mu.Lock()
 	defer pc.mu.Unlock()
@@ -444,18 +483,21 @@ func (pc *PooledConnection) Close() error {
 	return nil
 }
 
+// LastUsed returns the last time the connection was used.
 func (pc *PooledConnection) LastUsed() time.Time {
 	pc.mu.Lock()
 	defer pc.mu.Unlock()
 	return pc.lastUsed
 }
 
+// Release returns the connection to its owning pool.
 func (pc *PooledConnection) Release() {
 	if pc.pool != nil {
 		pc.pool.Put(pc)
 	}
 }
 
+// Stats returns point-in-time usage statistics for the connection.
 func (pc *PooledConnection) Stats() ConnectionStats {
 	pc.mu.Lock()
 	defer pc.mu.Unlock()
@@ -469,6 +511,8 @@ func (pc *PooledConnection) Stats() ConnectionStats {
 	}
 }
 
+// ConnectionStats describes usage and age information for one pooled
+// connection.
 type ConnectionStats struct {
 	CreatedAt time.Time
 	LastUsed  time.Time
@@ -477,8 +521,8 @@ type ConnectionStats struct {
 	IdleTime  time.Duration
 }
 
-// ----------------- Connection Pool -----------------
-
+// ConnectionPool manages a bounded set of reusable TCP clients for one
+// endpoint.
 type ConnectionPool struct {
 	address     string
 	opts        *PoolOptions
@@ -500,6 +544,8 @@ type ConnectionPool struct {
 	}
 }
 
+// NewConnectionPool validates options, initializes background routines, and
+// pre-creates the configured minimum number of connections.
 func NewConnectionPool(address string, options ...PoolOption) (*ConnectionPool, error) {
 	opts := DefaultPoolOptions()
 	for _, opt := range options {
@@ -571,9 +617,13 @@ func (p *ConnectionPool) createConnection() (*PooledConnection, error) {
 	return newPooledConnection(client, p), nil
 }
 
+// Get acquires a pooled connection using a background context.
 func (p *ConnectionPool) Get() (*PooledConnection, error) {
 	return p.GetWithContext(context.Background())
 }
+
+// GetWithContext acquires a healthy connection or waits for one to become
+// available until ctx is done.
 func (p *ConnectionPool) GetWithContext(ctx context.Context) (*PooledConnection, error) {
 	atomic.AddInt64(&p.stats.getCount, 1)
 
@@ -663,6 +713,8 @@ func (p *ConnectionPool) createNewConnectionWithContext(ctx context.Context) (*P
 	}
 }
 
+// Put returns conn to the idle pool if it is still healthy; otherwise it is
+// closed and discarded.
 func (p *ConnectionPool) Put(conn *PooledConnection) {
 	if conn == nil {
 		return
@@ -797,6 +849,7 @@ check:
 	}
 }
 
+// Close stops background routines and closes every managed connection.
 func (p *ConnectionPool) Close() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -820,6 +873,7 @@ func (p *ConnectionPool) Close() error {
 	return nil
 }
 
+// PoolStats summarizes the state and counters of a ConnectionPool.
 type PoolStats struct {
 	Address     string
 	CurrentSize int
@@ -832,6 +886,7 @@ type PoolStats struct {
 	CloseCount  int64
 }
 
+// Stats returns a snapshot of pool counters and capacity.
 func (p *ConnectionPool) Stats() PoolStats {
 	p.mu.RLock()
 	currentSize := p.currentSize
@@ -851,6 +906,7 @@ func (p *ConnectionPool) Stats() PoolStats {
 	}
 }
 
+// String returns a compact human-readable summary of the pool statistics.
 func (s PoolStats) String() string {
 	return fmt.Sprintf("Pool{Addr=%s, Size=%d/%d (idle=%d), "+
 		"Get=%d, Put=%d, Create=%d, Close=%d}",

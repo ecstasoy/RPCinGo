@@ -43,8 +43,11 @@ func defaultOptions() *clientOptions {
 	}
 }
 
+// Option mutates client configuration before a Client is constructed.
 type Option func(*clientOptions)
 
+// WithCodec selects the request/response body codec and transport compression
+// used by the client.
 func WithCodec(codec protocol.CodecType, compress protocol.CompressType) Option {
 	return func(o *clientOptions) {
 		o.codecType = codec
@@ -52,6 +55,8 @@ func WithCodec(codec protocol.CodecType, compress protocol.CompressType) Option 
 	}
 }
 
+// WithPoolSize configures the connection pool size used by fixed-address
+// clients created with NewClient.
 func WithPoolSize(max, min int) Option {
 	return func(o *clientOptions) {
 		o.maxConnections = max
@@ -59,30 +64,39 @@ func WithPoolSize(max, min int) Option {
 	}
 }
 
+// WithTimeout applies a per-call timeout around Client.Call.
 func WithTimeout(timeout time.Duration) Option {
 	return func(o *clientOptions) {
 		o.callTimeout = timeout
 	}
 }
 
+// WithDiscovery supplies the discovery backend required by
+// NewDiscoveryClient.
 func WithDiscovery(discovery registry.Discovery) Option {
 	return func(o *clientOptions) {
 		o.discovery = discovery
 	}
 }
 
+// WithLoadBalancer sets the load balancer used to pick a service instance in
+// discovery mode.
 func WithLoadBalancer(lb loadbalancer.LoadBalancer) Option {
 	return func(o *clientOptions) {
 		o.loadBalancer = lb
 	}
 }
 
+// WithWatch enables or disables background discovery watches in discovery
+// mode. It has no effect for fixed-address clients created with NewClient.
 func WithWatch(enable bool) Option {
 	return func(o *clientOptions) {
 		o.enableWatch = enable
 	}
 }
 
+// WithCircuitBreaker enables or disables circuit-breaker protection in
+// discovery mode.
 func WithCircuitBreaker(enable bool) Option {
 	return func(o *clientOptions) {
 		o.enableCircuitBreaker = enable
@@ -108,6 +122,8 @@ func WithRetry(maxRetries int, retryInterval time.Duration) Option {
 	}
 }
 
+// WithRateLimit prepends a client-side rate-limiting interceptor so rejected
+// calls fail before network I/O begins.
 func WithRateLimit(limiter ratelimiter.RateLimiter) Option {
 	return func(o *clientOptions) {
 		o.interceptors = append([]interceptor.Interceptor{interceptor.RateLimit(limiter)}, o.interceptors...)

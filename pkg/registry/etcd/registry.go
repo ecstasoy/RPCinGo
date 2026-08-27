@@ -12,6 +12,7 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
+// EtcdRegistry implements registry.Registry on top of etcd leases and keys.
 type EtcdRegistry struct {
 	*EtcdClient
 	leaseID clientv3.LeaseID
@@ -20,6 +21,7 @@ type EtcdRegistry struct {
 	stopCh      chan struct{}
 }
 
+// NewEtcdRegistry constructs a registry client and allocates its lease.
 func NewEtcdRegistry(config *Config) (*EtcdRegistry, error) {
 	client, err := NewEtcdClient(config)
 	if err != nil {
@@ -74,6 +76,8 @@ func (er *EtcdRegistry) listenKeepAlive() {
 	}
 }
 
+// Register stores instance under its service key and attaches it to the
+// registry lease.
 func (er *EtcdRegistry) Register(ctx context.Context, instance *registry.ServiceInstance) error {
 	key := er.serviceKey(instance.Service, instance.ID)
 
@@ -90,6 +94,7 @@ func (er *EtcdRegistry) Register(ctx context.Context, instance *registry.Service
 	return nil
 }
 
+// Deregister removes one service instance entry from etcd.
 func (er *EtcdRegistry) Deregister(ctx context.Context, service, instanceID string) error {
 	key := er.serviceKey(service, instanceID)
 
@@ -101,6 +106,7 @@ func (er *EtcdRegistry) Deregister(ctx context.Context, service, instanceID stri
 	return nil
 }
 
+// Heartbeat refreshes the registry lease for the registered instances.
 func (er *EtcdRegistry) Heartbeat(ctx context.Context, service, instanceID string) error {
 	_, err := er.client.KeepAliveOnce(ctx, er.leaseID)
 	if err != nil {
@@ -109,10 +115,13 @@ func (er *EtcdRegistry) Heartbeat(ctx context.Context, service, instanceID strin
 	return nil
 }
 
+// Update rewrites the stored service instance payload.
 func (er *EtcdRegistry) Update(ctx context.Context, instance *registry.ServiceInstance) error {
 	return er.Register(ctx, instance)
 }
 
+// Close stops lease keepalive handling, revokes the lease, and closes the
+// underlying client.
 func (er *EtcdRegistry) Close() error {
 	close(er.stopCh)
 

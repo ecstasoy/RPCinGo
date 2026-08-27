@@ -14,6 +14,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Config is the top-level YAML configuration for RPCinGo applications.
 type Config struct {
 	Server   ServerConfig   `yaml:"server"`
 	Client   ClientConfig   `yaml:"client"`
@@ -21,6 +22,7 @@ type Config struct {
 	Registry RegistryConfig `yaml:"registry"`
 }
 
+// ServerConfig configures the high-level RPC server.
 type ServerConfig struct {
 	Address           string        `yaml:"address"`
 	Codec             string        `yaml:"codec"`
@@ -45,6 +47,7 @@ type ServerConfig struct {
 	} `yaml:"interceptors"`
 }
 
+// ClientConfig configures the high-level RPC client.
 type ClientConfig struct {
 	Mode           string        `yaml:"mode"` // fixed/discovery
 	Address        string        `yaml:"address"`
@@ -61,6 +64,7 @@ type ClientConfig struct {
 	CircuitBreaker bool          `yaml:"circuit_breaker"`
 }
 
+// PoolConfig configures client connection pools.
 type PoolConfig struct {
 	MaxSize             int      `yaml:"max_size"`
 	MinSize             int      `yaml:"min_size"`
@@ -77,6 +81,7 @@ type PoolConfig struct {
 	WaitTimeout         Duration `yaml:"wait_timeout"`
 }
 
+// RegistryConfig configures the backing service registry implementation.
 type RegistryConfig struct {
 	Type string `yaml:"type"` // etcd/memory
 	Etcd struct {
@@ -87,8 +92,10 @@ type RegistryConfig struct {
 	} `yaml:"etcd"`
 }
 
+// Duration unmarshals time.Duration values from YAML strings.
 type Duration struct{ time.Duration }
 
+// UnmarshalYAML parses a duration string such as "5s" or "1m30s".
 func (d *Duration) UnmarshalYAML(value *yaml.Node) error {
 	var s string
 	if err := value.Decode(&s); err != nil {
@@ -102,6 +109,7 @@ func (d *Duration) UnmarshalYAML(value *yaml.Node) error {
 	return nil
 }
 
+// Load reads a YAML config file from path.
 func Load(path string) (*Config, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {

@@ -33,6 +33,8 @@ func init() {
 	prometheus.MustRegister(rpcDuration)
 }
 
+// Metrics returns an interceptor that records Prometheus call counters and
+// latency histograms.
 func Metrics() Interceptor {
 	return func(ctx context.Context, req *protocol.Request, invoker Invoker) (any, error) {
 		start := time.Now()

@@ -16,6 +16,8 @@ import (
 
 var tracer = otel.Tracer("rpc")
 
+// InitTracerProvider configures OpenTelemetry to export traces to Jaeger and
+// returns the tracer-provider shutdown function.
 func InitTracerProvider(jaegerURL, serviceName string) (func(ctx context.Context) error, error) {
 	tracer = otel.Tracer(serviceName)
 	exp, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(jaegerURL)))
@@ -37,10 +39,13 @@ func InitTracerProvider(jaegerURL, serviceName string) (func(ctx context.Context
 	return tp.Shutdown, nil
 }
 
+// Start starts a span with the package-level tracer.
 func Start(ctx context.Context, name string) (context.Context, trace.Span) {
 	return tracer.Start(ctx, name)
 }
 
+// TraceID returns the current trace ID or an empty string when the context does
+// not carry a valid span.
 func TraceID(ctx context.Context) string {
 	span := trace.SpanContextFromContext(ctx)
 	if !span.IsValid() {
