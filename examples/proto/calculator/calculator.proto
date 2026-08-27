@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package calculator;
+
+option go_package = "RPCinGo/examples/proto/calculator";
+
+message AddRequest {
+  int32 a = 1;
+  int32 b = 2;
+}
+
+message AddResponse {
+  int32 result = 1;
+}
+
+message SubtractRequest {
+  int32 a = 1;
+  int32 b = 2;
+}
+
+message SubtractResponse {
+  int32 result = 1;
+}
+
+message MultiplyRequest {
+  int32 a = 1;
+  int32 b = 2;
+}
+
+message MultiplyResponse {
+  int32 result = 1;
+}
+
+message DivideRequest {
+  int32 a = 1;
+  int32 b = 2;
+}
+
+message DivideResponse {
+  int32 result = 1;
+  int32 remainder = 2;
+}
+
+
+
+
