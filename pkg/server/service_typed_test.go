@@ -76,12 +76,12 @@ func TestServer_RegisterService_TypedMethods(t *testing.T) {
 	if resp.IsError() {
 		t.Fatalf("rpc error: %v", resp.Error)
 	}
-	
+
 	t.Logf("DataCodec: %v", resp.DataCodec)
-	
+
 	dataBytes := resp.Data.([]byte)
 	addResp := &calculator.AddResponse{}
-	
+
 	switch resp.DataCodec {
 	case protocol.PayloadCodecProtobuf:
 		if err := proto.Unmarshal(dataBytes, addResp); err != nil {
@@ -94,7 +94,7 @@ func TestServer_RegisterService_TypedMethods(t *testing.T) {
 	default:
 		t.Fatalf("unsupported data codec: %v", resp.DataCodec)
 	}
-	
+
 	sum := int(addResp.Result)
 	if sum != 30 {
 		t.Errorf("expected 30, got %d", sum)
@@ -110,10 +110,10 @@ func TestServer_RegisterService_TypedMethods(t *testing.T) {
 	if resp2.IsError() {
 		t.Fatalf("rpc error: %v", resp2.Error)
 	}
-	
+
 	dataBytes2 := resp2.Data.([]byte)
 	subtractResp := &calculator.SubtractResponse{}
-	
+
 	switch resp2.DataCodec {
 	case protocol.PayloadCodecProtobuf:
 		if err := proto.Unmarshal(dataBytes2, subtractResp); err != nil {
@@ -126,11 +126,10 @@ func TestServer_RegisterService_TypedMethods(t *testing.T) {
 	default:
 		t.Fatalf("unsupported data codec: %v", resp2.DataCodec)
 	}
-	
+
 	diff := int(subtractResp.Result)
 	if diff != 30 {
 		t.Errorf("expected 30, got %d", diff)
 	}
 	t.Logf("✅ Typed RPC call successful: 50 - 20 = %d", diff)
 }
-

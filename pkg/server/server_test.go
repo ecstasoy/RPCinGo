@@ -37,7 +37,7 @@ func TestServer_RegisterAndCall(t *testing.T) {
 			b := int(argsMap["b"].(float64))
 			return a + b, nil
 		}
-		
+
 		var argsMap map[string]interface{}
 		if err := json.Unmarshal(argsBytes, &argsMap); err != nil {
 			return nil, err
@@ -73,29 +73,29 @@ func TestServer_RegisterAndCall(t *testing.T) {
 	if resp.IsError() {
 		t.Fatalf("rpc error: %v", resp.Error)
 	}
-	
+
 	if resp.Data == nil {
 		t.Fatalf("resp.Data is nil")
 	}
-	
+
 	t.Logf("resp.Data type: %T, DataCodec: %v", resp.Data, resp.DataCodec)
-	
+
 	dataBytes, ok := resp.Data.([]byte)
 	if !ok {
 		t.Fatalf("resp.Data is not []byte: %T", resp.Data)
 	}
-	
+
 	t.Logf("dataBytes: %s", string(dataBytes))
-	
+
 	var data interface{}
 	if err := json.Unmarshal(dataBytes, &data); err != nil {
 		t.Fatalf("unmarshal data failed: %v", err)
 	}
-	
+
 	if data == nil {
 		t.Fatalf("data is nil after unmarshal")
 	}
-	
+
 	sum := int(data.(float64))
 	if sum != 30 {
 		t.Errorf("expected 30, got %d", sum)
