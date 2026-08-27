@@ -9,6 +9,7 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
+// Config configures the etcd-backed registry and discovery implementations.
 type Config struct {
 	Endpoints   []string
 	DialTimeout time.Duration
@@ -17,6 +18,7 @@ type Config struct {
 	LeaseTTL  int64
 }
 
+// DefaultConfig returns the default etcd configuration.
 func DefaultConfig() *Config {
 	return &Config{
 		Endpoints:   []string{"localhost:2379"},
@@ -26,11 +28,13 @@ func DefaultConfig() *Config {
 	}
 }
 
+// EtcdClient wraps the shared etcd client and key-layout helpers.
 type EtcdClient struct {
 	client *clientv3.Client
 	config *Config
 }
 
+// NewEtcdClient constructs a low-level EtcdClient.
 func NewEtcdClient(config *Config) (*EtcdClient, error) {
 	if config == nil {
 		config = DefaultConfig()
@@ -50,6 +54,7 @@ func NewEtcdClient(config *Config) (*EtcdClient, error) {
 	}, nil
 }
 
+// Close closes the underlying etcd client.
 func (ec *EtcdClient) Close() error {
 	return ec.client.Close()
 }

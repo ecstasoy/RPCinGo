@@ -15,6 +15,7 @@ import (
 
 const defaultVirtualNodes = 150
 
+// ConsistentHash picks instances by hashing a key onto a virtual-node ring.
 type ConsistentHash struct {
 	hashRing     []uint32
 	nodes        map[uint32]*registry.ServiceInstance
@@ -24,6 +25,8 @@ type ConsistentHash struct {
 	mu        sync.RWMutex
 }
 
+// NewConsistentHash returns a consistent-hash balancer with the default number
+// of virtual nodes.
 func NewConsistentHash() BalancerWithOptions {
 	return &ConsistentHash{
 		nodes:        make(map[uint32]*registry.ServiceInstance),
@@ -31,10 +34,13 @@ func NewConsistentHash() BalancerWithOptions {
 	}
 }
 
+// Pick selects an instance using a generated key when no explicit options are
+// supplied.
 func (ch *ConsistentHash) Pick(ctx context.Context, instances []*registry.ServiceInstance) (*registry.ServiceInstance, error) {
 	return ch.PickWithOptions(ctx, instances, nil)
 }
 
+// PickWithOptions selects an instance by hashing opts.key when provided.
 func (ch *ConsistentHash) PickWithOptions(ctx context.Context, instances []*registry.ServiceInstance, opts *PickOptions) (*registry.ServiceInstance, error) {
 	if len(instances) == 0 {
 		return nil, ErrNoInstances
@@ -121,6 +127,7 @@ func (ch *ConsistentHash) hashKey(key string) uint32 {
 	return uint32(hash[0])<<24 | uint32(hash[1])<<16 | uint32(hash[2])<<8 | uint32(hash[3])
 }
 
+// Name returns the balancer name.
 func (ch *ConsistentHash) Name() string {
 	return "consistent-hash"
 }

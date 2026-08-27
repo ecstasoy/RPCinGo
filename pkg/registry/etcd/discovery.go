@@ -12,10 +12,12 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
+// EtcdDiscovery implements registry.Discovery on top of etcd key prefixes.
 type EtcdDiscovery struct {
 	*EtcdClient
 }
 
+// NewEtcdDiscovery constructs an etcd-backed discovery client.
 func NewEtcdDiscovery(config *Config) (*EtcdDiscovery, error) {
 	client, err := NewEtcdClient(config)
 	if err != nil {
@@ -27,6 +29,7 @@ func NewEtcdDiscovery(config *Config) (*EtcdDiscovery, error) {
 	}, nil
 }
 
+// GetInstances returns all healthy instances registered under service.
 func (ed *EtcdDiscovery) GetInstances(ctx context.Context, service string) ([]*registry.ServiceInstance, error) {
 	prefix := ed.servicePrefix(service)
 
@@ -50,6 +53,8 @@ func (ed *EtcdDiscovery) GetInstances(ctx context.Context, service string) ([]*r
 	return instances, nil
 }
 
+// GetInstanceByID fetches one instance by its exact ID and requires it to be
+// healthy.
 func (ed *EtcdDiscovery) GetInstanceByID(ctx context.Context, service, instanceID string) (*registry.ServiceInstance, error) {
 	key := ed.serviceKey(service, instanceID)
 
@@ -74,6 +79,8 @@ func (ed *EtcdDiscovery) GetInstanceByID(ctx context.Context, service, instanceI
 	return &instance, nil
 }
 
+// Watch subscribes to instance changes for service and returns a Watcher that
+// yields add, update, and delete events.
 func (ed *EtcdDiscovery) Watch(ctx context.Context, service string) (registry.Watcher, error) {
 	prefix := ed.servicePrefix(service)
 	ctx, cancel := context.WithCancel(ctx)

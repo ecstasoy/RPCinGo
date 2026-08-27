@@ -12,12 +12,15 @@ import (
 	"RPCinGo/pkg/registry"
 )
 
+// Registry is an in-memory implementation of registry.Registry and
+// registry.Discovery.
 type Registry struct {
 	instances map[string]*registry.ServiceInstance
 	watchers  map[string][]chan *registry.Event
 	mu        sync.RWMutex
 }
 
+// NewRegistry returns an empty in-memory registry.
 func NewRegistry() *Registry {
 	return &Registry{
 		instances: make(map[string]*registry.ServiceInstance),
@@ -25,6 +28,7 @@ func NewRegistry() *Registry {
 	}
 }
 
+// Register stores instance and notifies watchers of an add event.
 func (r *Registry) Register(ctx context.Context, instance *registry.ServiceInstance) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -39,6 +43,7 @@ func (r *Registry) Register(ctx context.Context, instance *registry.ServiceInsta
 	return nil
 }
 
+// Deregister removes one instance and notifies watchers of a delete event.
 func (r *Registry) Deregister(ctx context.Context, service, instanceID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -58,6 +63,8 @@ func (r *Registry) Deregister(ctx context.Context, service, instanceID string) e
 	return nil
 }
 
+// Update replaces an existing instance and notifies watchers of an update
+// event.
 func (r *Registry) Update(ctx context.Context, instance *registry.ServiceInstance) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -77,6 +84,7 @@ func (r *Registry) Update(ctx context.Context, instance *registry.ServiceInstanc
 	return nil
 }
 
+// Heartbeat refreshes the instance update timestamp.
 func (r *Registry) Heartbeat(ctx context.Context, service, instanceID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -90,6 +98,7 @@ func (r *Registry) Heartbeat(ctx context.Context, service, instanceID string) er
 	return nil
 }
 
+// GetInstances returns all healthy instances registered under service.
 func (r *Registry) GetInstances(ctx context.Context, service string) ([]*registry.ServiceInstance, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -104,6 +113,7 @@ func (r *Registry) GetInstances(ctx context.Context, service string) ([]*registr
 	return result, nil
 }
 
+// GetInstanceByID returns the instance with instanceID.
 func (r *Registry) GetInstanceByID(ctx context.Context, instanceID string) (*registry.ServiceInstance, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -116,6 +126,7 @@ func (r *Registry) GetInstanceByID(ctx context.Context, instanceID string) (*reg
 	return instance, nil
 }
 
+// Watch subscribes to change events for service.
 func (r *Registry) Watch(ctx context.Context, service string) (registry.Watcher, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -139,6 +150,7 @@ func (r *Registry) notify(service string, event *registry.Event) {
 	}
 }
 
+// Close closes all watcher channels managed by the registry.
 func (r *Registry) Close() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
