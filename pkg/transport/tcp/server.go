@@ -14,6 +14,7 @@ import (
 	"RPCinGo/pkg/transport"
 )
 
+// Server implements the TCP server transport for framed RPC requests.
 type Server struct {
 	address  string
 	opts     *transport.ServerOptions
@@ -33,6 +34,8 @@ type Server struct {
 	reqSemaphore chan struct{}
 }
 
+// NewServer constructs a TCP transport server using codecType and compressType
+// for request and response bodies.
 func NewServer(
 	codecType protocol.CodecType,
 	compressType protocol.CompressType,
@@ -60,6 +63,7 @@ func NewServer(
 	return server
 }
 
+// Listen binds the server to addr without starting the accept loop.
 func (s *Server) Listen(ctx context.Context, addr string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -81,6 +85,8 @@ func (s *Server) Listen(ctx context.Context, addr string) error {
 	return nil
 }
 
+// Serve accepts connections on the bound listener and dispatches decoded
+// requests to handler until ctx is canceled or the server is closed.
 func (s *Server) Serve(ctx context.Context, handler transport.Handler) error {
 	s.mu.Lock()
 
@@ -154,6 +160,8 @@ func (s *Server) Serve(ctx context.Context, handler transport.Handler) error {
 }
 
 func (s *Server) handleConnection(ctx context.Context, conn net.Conn) error {
+	connCtx, connCancel := context.WithCancel(ctx)
+	defer connCancel()
 	defer s.CloseConnection(conn)
 
 	if tcpConn, ok := conn.(*net.TCPConn); ok {
@@ -194,9 +202,10 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) error {
 			if s.opts.WriteTimeout > 0 {
 				conn.SetWriteDeadline(time.Now().Add(s.opts.WriteTimeout))
 			}
+
 			if err := s.codec.WriteResponse(conn, resp); err != nil {
-				// 写失败说明连接已断开，关闭连接让读循环感知 EOF 并退出
-				conn.Close()
+				_ = conn.Close()
+				connCancel()
 				return
 			}
 			conn.SetWriteDeadline(time.Time{})
@@ -226,18 +235,24 @@ outer:
 		conn.SetReadDeadline(time.Time{})
 
 		if s.opts.MaxRequestBodySize > 0 && int64(header.BodyLength) > s.opts.MaxRequestBodySize {
-			writeCh <- protocol.NewErrorResponse(header.RequestID,
-				protocol.NewError(protocol.ErrorRequestEntityTooLarge, "request body too large"))
-			continue
+			select {
+			case writeCh <- protocol.NewErrorResponse(header.RequestID,
+				protocol.NewError(protocol.ErrorRequestEntityTooLarge, "request body too large")):
+			case <-connCtx.Done():
+				break outer
+			}
 		}
 
 		if s.reqSemaphore != nil {
 			select {
 			case s.reqSemaphore <- struct{}{}:
 			default:
-				writeCh <- protocol.NewErrorResponse(header.RequestID,
-					protocol.NewError(protocol.ErrorCodeUnavailable, "too many concurrent requests"))
-				continue
+				select {
+				case writeCh <- protocol.NewErrorResponse(header.RequestID,
+					protocol.NewError(protocol.ErrorCodeUnavailable, "too many concurrent requests")):
+				case <-connCtx.Done():
+					break outer
+				}
 			}
 		}
 
@@ -253,9 +268,9 @@ outer:
 			var reqCtx context.Context
 			var cancel context.CancelFunc
 			if s.opts.HandlerTimeout > 0 {
-				reqCtx, cancel = context.WithTimeout(ctx, s.opts.HandlerTimeout)
+				reqCtx, cancel = context.WithTimeout(connCtx, s.opts.HandlerTimeout)
 			} else {
-				reqCtx, cancel = context.WithCancel(ctx)
+				reqCtx, cancel = context.WithCancel(connCtx)
 			}
 			defer cancel()
 
@@ -264,7 +279,11 @@ outer:
 				resp = protocol.NewErrorResponse(header.RequestID,
 					protocol.NewError(protocol.ErrorCodeInternal, handlerErr.Error()))
 			}
-			writeCh <- resp
+			select {
+			case writeCh <- resp:
+			case <-connCtx.Done():
+				return
+			}
 		}(header, req)
 	}
 
@@ -275,23 +294,24 @@ outer:
 	return nil
 }
 
+// CloseConnection closes conn and updates the server's connection accounting.
 func (s *Server) CloseConnection(conn net.Conn) error {
 	err := conn.Close()
+
+	atomic.AddInt64(&s.activeConnections, -1)
+	if s.connSemaphore != nil {
+		<-s.connSemaphore
+	}
+	s.wg.Done()
+
 	if err != nil {
 		return fmt.Errorf("close connection failed: %w", err)
 	}
 
-	atomic.AddInt64(&s.activeConnections, -1)
-
-	if s.connSemaphore != nil {
-		<-s.connSemaphore
-	}
-
-	s.wg.Done()
-
 	return nil
 }
 
+// Close stops accepting new connections and waits for active handlers to exit.
 func (s *Server) Close() error {
 	s.mu.Lock()
 
@@ -315,6 +335,7 @@ func (s *Server) Close() error {
 	return nil
 }
 
+// Addr returns the bound listener address, or nil before Listen succeeds.
 func (s *Server) Addr() net.Addr {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -325,6 +346,7 @@ func (s *Server) Addr() net.Addr {
 	return nil
 }
 
+// Stats returns point-in-time connection counters for the server.
 func (s *Server) Stats() ServerStats {
 	return ServerStats{
 		ActiveConnections: atomic.LoadInt64(&s.activeConnections),
@@ -333,6 +355,14 @@ func (s *Server) Stats() ServerStats {
 	}
 }
 
+// Options returns a copy of the transport options the server was built with.
+// It lets higher layers verify which transport knobs are in effect (for
+// example, that a server-level HandlerTimeout reached the transport).
+func (s *Server) Options() transport.ServerOptions {
+	return *s.opts
+}
+
+// ServerStats summarizes TCP server connection counters.
 type ServerStats struct {
 	ActiveConnections int64
 	TotalConnections  int64

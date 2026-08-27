@@ -19,9 +19,14 @@ import (
 	"RPCinGo/pkg/transport/tcp"
 )
 
+// Server is the high-level RPC server that combines service registration,
+// interceptor execution, TCP transport, and optional service registry
+// integration.
 type Server struct {
-	opts      *serverOptions
-	registry  *ServiceRegistry
+	opts     *serverOptions
+	registry *ServiceRegistry
+	// Transport exposes the underlying TCP transport used to accept
+	// connections and serve requests.
 	Transport *tcp.Server
 	codec     codec.Codec
 	log       logger.Logger
@@ -34,8 +39,12 @@ type Server struct {
 	interceptors []interceptor.Interceptor
 }
 
+// Invoker is the terminal request handler executed after server interceptors
+// run.
 type Invoker func(ctx context.Context, req *protocol.Request) (any, error)
 
+// NewServer builds a Server with the supplied options and initializes the
+// underlying transport, codec, logger, and interceptor chain.
 func NewServer(opts ...Option) *Server {
 	options := defaultServerOptions()
 	for _, o := range opts {
@@ -47,16 +56,22 @@ func NewServer(opts ...Option) *Server {
 		log = logger.New()
 	}
 
+	// Translate the named server options into transport options, then append
+	// any raw transport options the caller supplied via WithTransportOptions.
+	// The raw options come last so they take precedence and so every transport
+	// knob is reachable through a single server constructor.
+	transportOpts := []transport.ServerOption{
+		transport.WithServerTimeout(options.readTimeout, options.writeTimeout),
+		transport.WithHandlerTimeout(options.handlerTimeout),
+		transport.WithWorkerPool(options.workerPoolSize),
+		transport.WithMaxConcurrentRequests(options.maxConcurrent),
+	}
+	transportOpts = append(transportOpts, options.transportOptions...)
+
 	return &Server{
-		opts:     options,
-		registry: newServiceRegistry(),
-		Transport: tcp.NewServer(
-			options.codecType,
-			options.compressType,
-			transport.WithServerTimeout(options.readTimeout, options.writeTimeout),
-			transport.WithWorkerPool(options.workerPoolSize),
-			transport.WithMaxConcurrentRequests(options.maxConcurrent),
-		),
+		opts:          options,
+		registry:      newServiceRegistry(),
+		Transport:     tcp.NewServer(options.codecType, options.compressType, transportOpts...),
 		codec:         codec.Get(options.codecType),
 		log:           log,
 		stopHeartbeat: make(chan struct{}),
@@ -64,14 +79,20 @@ func NewServer(opts ...Option) *Server {
 	}
 }
 
+// RegisterMethod registers a single MethodHandler under service and method.
 func (s *Server) RegisterMethod(service, method string, handler MethodHandler) error {
 	return s.registry.RegisterMethod(service, method, handler)
 }
 
+// RegisterService reflects over serviceImpl and registers all eligible exported
+// methods under serviceName.
 func (s *Server) RegisterService(serviceName string, serviceImpl interface{}) error {
 	return s.registry.RegisterService(serviceName, serviceImpl)
 }
 
+// Start begins listening and serving requests until ctx is canceled or the
+// transport stops. If registry integration is enabled, Start also registers the
+// service instance and starts heartbeats.
 func (s *Server) Start(ctx context.Context) error {
 	if err := s.Transport.Listen(ctx, s.opts.address); err != nil {
 		return fmt.Errorf("failed to listen tcp transport: %w", err)
@@ -97,8 +118,10 @@ func (s *Server) Start(ctx context.Context) error {
 }
 
 // Use adds interceptors to the server's interceptor chain.
-// usage:
-// srv.Use(
+//
+// Usage:
+//
+//	srv.Use(
 //
 //		interceptor.Recovery(),
 //		interceptor.Logging(nil),
@@ -110,6 +133,9 @@ func (s *Server) Use(interceptors ...interceptor.Interceptor) {
 	s.interceptors = append(s.interceptors, interceptors...)
 }
 
+// HandleRequest executes the interceptor chain, dispatches the request to the
+// registered method, and converts handler errors into protocol error
+// responses.
 func (s *Server) HandleRequest(ctx context.Context, req *protocol.Request) (*protocol.Response, error) {
 	chain := interceptor.NewChain(s.interceptors...)
 
@@ -135,6 +161,8 @@ func (s *Server) HandleRequest(ctx context.Context, req *protocol.Request) (*pro
 	return resp, nil
 }
 
+// Addr returns the bound listener address or an empty string before the
+// transport starts listening.
 func (s *Server) Addr() string {
 	if s.Transport.Addr() != nil {
 		return s.Transport.Addr().String()
@@ -193,6 +221,8 @@ func (s *Server) startHeartbeat() error {
 	}
 }
 
+// Stop stops registry heartbeats, deregisters the service instance when
+// enabled, and closes the underlying transport.
 func (s *Server) Stop() error {
 	s.stopHeartbeatOne.Do(func() { close(s.stopHeartbeat) })
 
