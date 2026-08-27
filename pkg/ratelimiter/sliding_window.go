@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+// SlidingWindowLimiter implements a fixed-capacity sliding-window rate
+// limiter.
 type SlidingWindowLimiter struct {
 	limit  int64
 	window time.Duration
@@ -16,6 +18,8 @@ type SlidingWindowLimiter struct {
 	mu       sync.Mutex
 }
 
+// NewSlidingWindowLimiter returns a limiter allowing at most limit requests per
+// window duration.
 func NewSlidingWindowLimiter(limit int64, window time.Duration) RateLimiter {
 	return &SlidingWindowLimiter{
 		limit:    limit,
@@ -24,10 +28,12 @@ func NewSlidingWindowLimiter(limit int64, window time.Duration) RateLimiter {
 	}
 }
 
+// Allow reports whether one request can proceed immediately.
 func (swl *SlidingWindowLimiter) Allow(ctx context.Context) bool {
 	return swl.AllowN(ctx, 1)
 }
 
+// AllowN reports whether n requests can proceed immediately.
 func (swl *SlidingWindowLimiter) AllowN(ctx context.Context, n int) bool {
 	swl.mu.Lock()
 	defer swl.mu.Unlock()
@@ -55,6 +61,7 @@ func (swl *SlidingWindowLimiter) AllowN(ctx context.Context, n int) bool {
 	return true
 }
 
+// Wait blocks until one request can proceed or ctx is canceled.
 func (swl *SlidingWindowLimiter) Wait(ctx context.Context) error {
 	for {
 		if swl.Allow(ctx) {
@@ -69,6 +76,7 @@ func (swl *SlidingWindowLimiter) Wait(ctx context.Context) error {
 	}
 }
 
+// Name returns the limiter name.
 func (swl *SlidingWindowLimiter) Name() string {
 	return "sliding-window"
 }

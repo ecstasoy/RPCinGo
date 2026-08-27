@@ -10,6 +10,8 @@ import (
 	"go.opentelemetry.io/otel/codes"
 )
 
+// TracingClient returns a client-side interceptor that starts a span and
+// injects trace context into request metadata.
 func TracingClient() Interceptor {
 	return func(ctx context.Context, req *protocol.Request, invoker Invoker) (any, error) {
 		ctx, span := tracing.Start(ctx, "rpc.client/"+req.Service+"/"+req.Method)
@@ -31,6 +33,8 @@ func TracingClient() Interceptor {
 	}
 }
 
+// TracingServer returns a server-side interceptor that extracts propagated
+// trace context, starts a span, and writes the span ID back into metadata.
 func TracingServer() Interceptor {
 	return func(ctx context.Context, req *protocol.Request, invoker Invoker) (any, error) {
 		// Extract trace context propagated from client

@@ -7,18 +7,24 @@ import (
 	"context"
 )
 
+// Invoker is the terminal function wrapped by one or more interceptors.
 type Invoker func(ctx context.Context, req *protocol.Request) (any, error)
 
+// Interceptor wraps an Invoker to add cross-cutting behavior around one
+// request.
 type Interceptor func(ctx context.Context, req *protocol.Request, invoker Invoker) (any, error)
 
+// Chain stores interceptors and executes them in registration order.
 type Chain struct {
 	interceptors []Interceptor
 }
 
+// NewChain returns a Chain built from interceptor.
 func NewChain(interceptor ...Interceptor) *Chain {
 	return &Chain{interceptors: interceptor}
 }
 
+// Intercept executes the interceptor chain around invoker.
 func (ic *Chain) Intercept(ctx context.Context, req *protocol.Request, invoker Invoker) (any, error) {
 	if len(ic.interceptors) == 0 {
 		return invoker(ctx, req)

@@ -9,6 +9,8 @@ import (
 	"runtime/debug"
 )
 
+// Recovery returns an interceptor that converts panics into errors containing
+// the panic value and stack trace.
 func Recovery() Interceptor {
 	return func(ctx context.Context, req *protocol.Request, invoker Invoker) (resp any, err error) {
 		defer func() {

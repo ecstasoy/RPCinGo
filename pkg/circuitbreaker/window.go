@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// Bucket stores per-interval request counters for a SlidingWindow.
 type Bucket struct {
 	success int64
 	failure int64
@@ -14,6 +15,8 @@ type Bucket struct {
 	total   int64
 }
 
+// SlidingWindow tracks recent successes, failures, and timeouts across a fixed
+// number of buckets.
 type SlidingWindow struct {
 	buckets    []Bucket
 	size       int
@@ -24,6 +27,8 @@ type SlidingWindow struct {
 	mu           sync.RWMutex
 }
 
+// NewSlidingWindow returns a SlidingWindow with size buckets, each spanning
+// bucketTime.
 func NewSlidingWindow(size int, bucketTime time.Duration) *SlidingWindow {
 	return &SlidingWindow{
 		buckets:    make([]Bucket, size),
@@ -33,6 +38,7 @@ func NewSlidingWindow(size int, bucketTime time.Duration) *SlidingWindow {
 	}
 }
 
+// RecordSuccess records one successful request in the current bucket.
 func (s *SlidingWindow) RecordSuccess() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -42,6 +48,7 @@ func (s *SlidingWindow) RecordSuccess() {
 	s.buckets[s.currentIndex].total++
 }
 
+// RecordFailure records one failed request in the current bucket.
 func (s *SlidingWindow) RecordFailure() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -51,6 +58,7 @@ func (s *SlidingWindow) RecordFailure() {
 	s.buckets[s.currentIndex].total++
 }
 
+// RecordTimeout records one timed-out request in the current bucket.
 func (s *SlidingWindow) RecordTimeout() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -84,6 +92,7 @@ func (s *SlidingWindow) updateBuckets() {
 	s.lastUpdate = now
 }
 
+// Stats returns aggregate counters across all buckets.
 func (s *SlidingWindow) Stats() (success, failure, timeout, total int64) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -98,6 +107,7 @@ func (s *SlidingWindow) Stats() (success, failure, timeout, total int64) {
 	return
 }
 
+// FailureRate returns (failure + timeout) / total over the current window.
 func (s *SlidingWindow) FailureRate() float64 {
 	_, failure, timeout, total := s.Stats()
 
@@ -108,6 +118,7 @@ func (s *SlidingWindow) FailureRate() float64 {
 	return float64(failure+timeout) / float64(total)
 }
 
+// Reset clears all buckets.
 func (s *SlidingWindow) Reset() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -117,6 +128,7 @@ func (s *SlidingWindow) Reset() {
 	}
 }
 
+// Total returns the total number of requests recorded in the window.
 func (s *SlidingWindow) Total() int64 {
 	_, _, _, total := s.Stats()
 	return total

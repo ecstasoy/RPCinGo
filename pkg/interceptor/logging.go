@@ -11,6 +11,8 @@ import (
 	"RPCinGo/pkg/tracing"
 )
 
+// Logging returns an interceptor that logs request outcome, duration, and trace
+// ID.
 func Logging(l logger.Logger) Interceptor {
 	if l == nil {
 		l = logger.New()

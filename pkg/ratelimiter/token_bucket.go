@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// TokenBucketLimiter implements a token-bucket rate limiter.
 type TokenBucketLimiter struct {
 	capacity int64
 	rate     int64
@@ -19,6 +20,8 @@ type TokenBucketLimiter struct {
 	mu          sync.Mutex
 }
 
+// NewTokenBucketLimiter returns a token-bucket limiter that refills at rate
+// tokens per second with the given capacity.
 func NewTokenBucketLimiter(rate, capacity int64) RateLimiter {
 	return &TokenBucketLimiter{
 		capacity:   capacity,
@@ -28,10 +31,12 @@ func NewTokenBucketLimiter(rate, capacity int64) RateLimiter {
 	}
 }
 
+// Allow reports whether one token can be consumed immediately.
 func (tb *TokenBucketLimiter) Allow(ctx context.Context) bool {
 	return tb.AllowN(ctx, 1)
 }
 
+// AllowN reports whether n tokens can be consumed immediately.
 func (tb *TokenBucketLimiter) AllowN(ctx context.Context, n int) bool {
 	if n <= 0 {
 		return true
@@ -50,6 +55,7 @@ func (tb *TokenBucketLimiter) AllowN(ctx context.Context, n int) bool {
 	return false
 }
 
+// Wait blocks until one token becomes available or ctx is canceled.
 func (tb *TokenBucketLimiter) Wait(ctx context.Context) error {
 	return tb.WaitN(ctx, 1)
 }
@@ -83,6 +89,7 @@ func (tb *TokenBucketLimiter) refill(now time.Time) {
 	}
 }
 
+// WaitN blocks until n tokens become available or ctx is canceled.
 func (tb *TokenBucketLimiter) WaitN(ctx context.Context, n int) error {
 	if n <= 0 {
 		return nil
@@ -124,6 +131,7 @@ func (tb *TokenBucketLimiter) WaitN(ctx context.Context, n int) error {
 	}
 }
 
+// Name returns the limiter name.
 func (tb *TokenBucketLimiter) Name() string {
 	return "token-bucket"
 }
