@@ -10,6 +10,7 @@ import (
 	"RPCinGo/pkg/protocol"
 )
 
+// PoolManager lazily creates and caches one ConnectionPool per endpoint.
 type PoolManager struct {
 	pools map[string]*ConnectionPool
 	mu    sync.RWMutex
@@ -21,16 +22,41 @@ type PoolManager struct {
 	minPoolSize int
 }
 
-func NewPoolManager(codecType protocol.CodecType, compressType protocol.CompressType) *PoolManager {
-	return &PoolManager{
+// PoolManagerOption mutates a PoolManager before it starts creating pools.
+type PoolManagerOption func(*PoolManager)
+
+// WithManagerPoolSize sets the per-endpoint pool size the manager applies to
+// every pool it creates. Without it the manager falls back to 100/10.
+func WithManagerPoolSize(max, min int) PoolManagerOption {
+	return func(pm *PoolManager) {
+		if max > 0 {
+			pm.maxPoolSize = max
+		}
+		if min >= 0 {
+			pm.minPoolSize = min
+		}
+	}
+}
+
+// NewPoolManager returns a PoolManager that creates pools using codecType and
+// compressType. Per-endpoint pool size defaults to 100/10 and can be overridden
+// with WithManagerPoolSize.
+func NewPoolManager(codecType protocol.CodecType, compressType protocol.CompressType, opts ...PoolManagerOption) *PoolManager {
+	pm := &PoolManager{
 		pools:        make(map[string]*ConnectionPool),
 		codecType:    codecType,
 		compressType: compressType,
 		maxPoolSize:  100,
 		minPoolSize:  10,
 	}
+	for _, o := range opts {
+		o(pm)
+	}
+	return pm
 }
 
+// GetConnection returns a connection from the pool for addr, creating the pool
+// on first use.
 func (pm *PoolManager) GetConnection(ctx context.Context, addr string) (*PooledConnection, error) {
 	// Double-checked locking
 	// First check with read lock
@@ -70,6 +96,7 @@ func (pm *PoolManager) GetConnection(ctx context.Context, addr string) (*PooledC
 	return newPool.GetWithContext(ctx)
 }
 
+// RemovePool closes and removes the pool associated with addr.
 func (pm *PoolManager) RemovePool(addr string) error {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
@@ -83,6 +110,7 @@ func (pm *PoolManager) RemovePool(addr string) error {
 	return pool.Close()
 }
 
+// Close closes and removes every managed pool.
 func (pm *PoolManager) Close() error {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
@@ -98,6 +126,7 @@ func (pm *PoolManager) Close() error {
 	return nil
 }
 
+// Stats returns point-in-time statistics for each managed pool.
 func (pm *PoolManager) Stats() map[string]PoolStats {
 	pm.mu.RLock()
 	defer pm.mu.RUnlock()

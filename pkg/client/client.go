@@ -9,7 +9,6 @@ import (
 
 	"RPCinGo/pkg/codec"
 	"RPCinGo/pkg/interceptor"
-	"RPCinGo/pkg/loadbalancer"
 	"RPCinGo/pkg/pool"
 	"RPCinGo/pkg/protocol"
 	"RPCinGo/pkg/registry"
@@ -17,22 +16,14 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// Client is the high-level RPC client used for either fixed-address or
+// discovery-based calls. The two modes differ only in how a connection is
+// acquired, which lives behind the connSource seam; Call itself has one path.
 type Client struct {
 	opts *clientOptions
 
-	poolManager  *pool.PoolManager
-	discovery    registry.Discovery
-	loadBalancer loadbalancer.LoadBalancer
-
-	instanceCache map[string][]*registry.ServiceInstance
-	cacheMu       sync.RWMutex
-
-	watchers map[string]registry.Watcher
-	watchMu  sync.Mutex
-
-	// Fixed mode (single instance)
-	fixedPool *pool.ConnectionPool
-	fixedMode bool
+	// source is the seam that hides fixed-vs-discovery connection acquisition.
+	source connSource
 
 	breakers  map[string]*circuitbreaker.CircuitBreaker
 	breakerMu sync.RWMutex
@@ -42,13 +33,20 @@ type Client struct {
 	interceptors []interceptor.Interceptor
 }
 
+// NewClient constructs a fixed-address client backed by one connection pool for
+// address. Discovery-only options are rejected so misconfiguration fails loudly
+// instead of being silently ignored.
 func NewClient(address string, opts ...Option) (*Client, error) {
 	options := defaultOptions()
 	for _, o := range opts {
 		o(options)
 	}
 
-	pool, err := pool.NewConnectionPool(
+	if options.discovery != nil {
+		return nil, fmt.Errorf("NewClient is for fixed-address clients; use NewDiscoveryClient when supplying WithDiscovery")
+	}
+
+	p, err := pool.NewConnectionPool(
 		address,
 		pool.WithPoolSize(options.maxConnections, options.minConnections),
 		pool.WithPoolCodec(options.codecType, options.compressType),
@@ -60,13 +58,16 @@ func NewClient(address string, opts ...Option) (*Client, error) {
 
 	return &Client{
 		opts:         options,
-		fixedPool:    pool,
-		fixedMode:    true,
+		source:       &fixedSource{pool: p},
 		codec:        codec.Get(options.codecType),
 		interceptors: buildInterceptors(options),
+		// breakerOn stays false: a fixed-address client has no circuit breaker.
 	}, nil
 }
 
+// NewDiscoveryClient constructs a discovery-based client that resolves
+// instances via WithDiscovery and load balances requests across them. The
+// configured pool size is honored per endpoint (no longer hardcoded).
 func NewDiscoveryClient(opts ...Option) (*Client, error) {
 	options := defaultOptions()
 	for _, o := range opts {
@@ -77,18 +78,26 @@ func NewDiscoveryClient(opts ...Option) (*Client, error) {
 		return nil, fmt.Errorf("discovery is required")
 	}
 
+	poolManager := pool.NewPoolManager(
+		options.codecType,
+		options.compressType,
+		pool.WithManagerPoolSize(options.maxConnections, options.minConnections),
+	)
+
 	return &Client{
-		opts:          options,
-		poolManager:   pool.NewPoolManager(options.codecType, options.compressType),
-		discovery:     options.discovery,
-		loadBalancer:  options.loadBalancer,
-		instanceCache: make(map[string][]*registry.ServiceInstance),
-		watchers:      make(map[string]registry.Watcher),
-		breakers:      make(map[string]*circuitbreaker.CircuitBreaker),
-		breakerOn:     options.enableCircuitBreaker,
-		fixedMode:     false,
-		codec:         codec.Get(options.codecType),
-		interceptors:  buildInterceptors(options),
+		opts: options,
+		source: &discoverySource{
+			poolManager:   poolManager,
+			discovery:     options.discovery,
+			loadBalancer:  options.loadBalancer,
+			enableWatch:   options.enableWatch,
+			instanceCache: make(map[string][]*registry.ServiceInstance),
+			watchers:      make(map[string]registry.Watcher),
+		},
+		breakers:     make(map[string]*circuitbreaker.CircuitBreaker),
+		breakerOn:    options.enableCircuitBreaker,
+		codec:        codec.Get(options.codecType),
+		interceptors: buildInterceptors(options),
 	}, nil
 }
 
@@ -98,6 +107,7 @@ func (c *Client) Use(interceptors ...interceptor.Interceptor) {
 	c.interceptors = append(c.interceptors, interceptors...)
 }
 
+// Call invokes service.method with args and returns the decoded RPC response.
 func (c *Client) Call(ctx context.Context, service, method string, args any) (*protocol.Response, error) {
 	if c.opts.callTimeout > 0 {
 		var cancel context.CancelFunc
@@ -107,17 +117,18 @@ func (c *Client) Call(ctx context.Context, service, method string, args any) (*p
 
 	req := protocol.NewRequest(service, method, args)
 
+	if key, ok := hashKeyFromContext(ctx); ok {
+		req.SetMetadata(protocol.MetaKeyHashKey, key)
+	}
+
 	invoker := func(ctx context.Context, req *protocol.Request) (any, error) {
-		if c.fixedMode {
-			return c.callFixed(ctx, req)
-		}
 		if c.breakerOn {
 			cb := c.getCircuitBreaker(req.Service)
 			return cb.CallResponse(ctx, func() (*protocol.Response, error) {
-				return c.callWithDiscovery(ctx, req)
+				return c.callOnce(ctx, req)
 			})
 		}
-		return c.callWithDiscovery(ctx, req)
+		return c.callOnce(ctx, req)
 	}
 
 	chain := interceptor.NewChain(c.interceptors...)
@@ -131,44 +142,13 @@ func (c *Client) Call(ctx context.Context, service, method string, args any) (*p
 	return result.(*protocol.Response), nil
 }
 
-func (c *Client) callFixed(ctx context.Context, req *protocol.Request) (*protocol.Response, error) {
-	conn, err := c.fixedPool.GetWithContext(ctx)
+// callOnce performs one attempt: acquire a connection from the source, send the
+// request, and translate a protocol error into a Go error. It is the single
+// connection-using path shared by both modes.
+func (c *Client) callOnce(ctx context.Context, req *protocol.Request) (*protocol.Response, error) {
+	conn, err := c.source.acquire(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("get connection: %w", err)
-	}
-
-	resp, err := conn.Client.SendRequest(ctx, req)
-	if err != nil {
-		conn.Close()
-		return nil, fmt.Errorf("send: %w", err)
-	}
-	conn.Release()
-
-	if resp.IsError() {
-		return nil, unmapError(resp)
-	}
-
-	return resp, nil
-}
-
-func (c *Client) callWithDiscovery(ctx context.Context, req *protocol.Request) (*protocol.Response, error) {
-	instances, err := c.getInstances(ctx, req.Service)
-	if err != nil {
-		return nil, fmt.Errorf("get instances: %w", err)
-	}
-
-	if len(instances) == 0 {
-		return nil, fmt.Errorf("no available instances for %s", req.Service)
-	}
-
-	instance, err := c.loadBalancer.Pick(ctx, instances)
-	if err != nil {
-		return nil, fmt.Errorf("pick instance: %w", err)
-	}
-
-	conn, err := c.poolManager.GetConnection(ctx, instance.Endpoint())
-	if err != nil {
-		return nil, fmt.Errorf("get connection to %s: %w", instance.Endpoint(), err)
+		return nil, err
 	}
 
 	resp, err := conn.Client.SendRequest(ctx, req)
@@ -197,92 +177,6 @@ func buildInterceptors(opts *clientOptions) []interceptor.Interceptor {
 	return chain
 }
 
-func (c *Client) getInstances(ctx context.Context, service string) ([]*registry.ServiceInstance, error) {
-	c.cacheMu.RLock()
-	cached, ok := c.instanceCache[service]
-	c.cacheMu.RUnlock()
-
-	if ok && len(cached) > 0 {
-		return cached, nil
-	}
-
-	if c.discovery == nil {
-		return nil, fmt.Errorf("no discovery configured")
-	}
-
-	instances, err := c.discovery.GetInstances(ctx, service)
-	if err != nil {
-		return nil, fmt.Errorf("discovery get instances: %w", err)
-	}
-
-	c.cacheMu.Lock()
-	c.instanceCache[service] = instances
-	c.cacheMu.Unlock()
-
-	if c.opts.enableWatch {
-		go c.watchService(service)
-	}
-
-	return instances, nil
-}
-
-func (c *Client) watchService(service string) {
-	c.watchMu.Lock()
-	if _, watching := c.watchers[service]; watching {
-		c.watchMu.Unlock()
-		return
-	}
-
-	watcher, err := c.discovery.Watch(context.Background(), service)
-	if err != nil {
-		c.watchMu.Unlock()
-		return
-	}
-
-	c.watchers[service] = watcher
-	c.watchMu.Unlock()
-
-	for {
-		event, err := watcher.Next()
-		if err != nil {
-			return
-		}
-
-		c.handleWatchEvent(service, event)
-	}
-}
-
-func (c *Client) handleWatchEvent(service string, event *registry.Event) {
-	c.cacheMu.Lock()
-	defer c.cacheMu.Unlock()
-
-	instances := c.instanceCache[service]
-
-	switch event.Type {
-	case registry.EventTypeAdd:
-		instances = append(instances, event.Instance)
-	case registry.EventTypeDelete:
-		filtered := make([]*registry.ServiceInstance, 0, len(instances))
-		for _, inst := range instances {
-			if inst.ID != event.Instance.ID {
-				filtered = append(filtered, inst)
-			}
-		}
-		instances = filtered
-
-		c.poolManager.RemovePool(event.Instance.Endpoint())
-	case registry.EventTypeUpdate:
-		for i, inst := range instances {
-			if inst.ID == event.Instance.ID {
-				instances[i] = event.Instance
-				break
-			}
-		}
-	}
-
-	c.instanceCache[service] = instances
-}
-
 func (c *Client) getCircuitBreaker(service string) *circuitbreaker.CircuitBreaker {
 	c.breakerMu.RLock()
 	cb, exists := c.breakers[service]
@@ -306,6 +200,8 @@ func (c *Client) getCircuitBreaker(service string) *circuitbreaker.CircuitBreake
 	return cb
 }
 
+// CallTyped invokes service.method with a protobuf request and unmarshals the
+// typed response payload into resp.
 func (c *Client) CallTyped(ctx context.Context, service, method string, req proto.Message, resp proto.Message) (*protocol.Response, error) {
 	respData, err := c.Call(ctx, service, method, req)
 	if err != nil {
@@ -343,16 +239,7 @@ func (c *Client) CallTyped(ctx context.Context, service, method string, req prot
 	}
 }
 
+// Close releases all client resources, including pools and discovery watchers.
 func (c *Client) Close() error {
-	if c.fixedMode {
-		return c.fixedPool.Close()
-	}
-
-	c.watchMu.Lock()
-	for _, watcher := range c.watchers {
-		watcher.Stop()
-	}
-	c.watchMu.Unlock()
-
-	return c.poolManager.Close()
+	return c.source.Close()
 }
