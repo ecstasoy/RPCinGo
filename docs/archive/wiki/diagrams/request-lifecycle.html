@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RPCinGo — Request Lifecycle</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'JetBrains Mono', monospace; background: #020617; min-height: 100vh; padding: 2rem; color: white; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .header { margin-bottom: 2rem; }
+    .header-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; }
+    .pulse-dot { width: 12px; height: 12px; background: #22d3ee; border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.025em; }
+    .subtitle { color: #94a3b8; font-size: 0.875rem; margin-left: 1.75rem; }
+    .diagram-container { background: rgba(15, 23, 42, 0.5); border-radius: 1rem; border: 1px solid #1e293b; padding: 1.5rem; overflow-x: auto; }
+    svg { width: 100%; min-width: 900px; display: block; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: 2rem; }
+    .card { background: rgba(15, 23, 42, 0.5); border-radius: 0.75rem; border: 1px solid #1e293b; padding: 1.25rem; }
+    .card-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .card-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .card-dot.cyan { background: #22d3ee; }
+    .card-dot.emerald { background: #34d399; }
+    .card-dot.violet { background: #a78bfa; }
+    .card-dot.amber { background: #fbbf24; }
+    .card-dot.rose { background: #fb7185; }
+    .card-dot.orange { background: #fb923c; }
+    .card h3 { font-size: 0.875rem; font-weight: 600; }
+    .card ul { list-style: none; color: #94a3b8; font-size: 0.75rem; }
+    .card li { margin-bottom: 0.375rem; }
+    .footer { text-align: center; margin-top: 1.5rem; color: #475569; font-size: 0.75rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-row"><div class="pulse-dot"></div><h1>RPCinGo — Request Lifecycle</h1></div>
+      <p class="subtitle">End-to-end journey of a single RPC call from client.Call() to response, with timing annotations.</p>
+    </div>
+    <div class="diagram-container">
+<svg viewBox="0 0 1000 680" font-family="'JetBrains Mono', monospace" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+    </pattern>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
+    </marker>
+    <marker id="arr-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#22d3ee" />
+    </marker>
+    <marker id="arr-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#34d399" />
+    </marker>
+    <marker id="arr-rose" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#fb7185" />
+    </marker>
+    <marker id="arr-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#fb923c" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1000" height="680" fill="#020617"/>
+  <rect width="1000" height="680" fill="url(#grid)"/>
+
+  <!-- Timeline spine -->
+  <line x1="500" y1="60" x2="500" y2="600" stroke="#475569" stroke-width="2"/>
+
+  <!-- Column labels -->
+  <text x="250" y="45" fill="#22d3ee" font-size="14" font-weight="600" text-anchor="middle">CLIENT</text>
+  <text x="750" y="45" fill="#34d399" font-size="14" font-weight="600" text-anchor="middle">SERVER</text>
+
+  <!-- Step connector lines to spine -->
+  <line x1="450" y1="90" x2="492" y2="90" stroke="#22d3ee" stroke-width="1"/>
+  <line x1="450" y1="170" x2="492" y2="170" stroke="#22d3ee" stroke-width="1"/>
+  <line x1="450" y1="250" x2="492" y2="250" stroke="#22d3ee" stroke-width="1"/>
+  <line x1="450" y1="330" x2="492" y2="330" stroke="#fb7185" stroke-width="1"/>
+  <!-- Server side connector lines -->
+  <line x1="508" y1="440" x2="550" y2="440" stroke="#fb7185" stroke-width="1"/>
+  <line x1="508" y1="520" x2="550" y2="520" stroke="#34d399" stroke-width="1"/>
+  <line x1="508" y1="580" x2="550" y2="580" stroke="#34d399" stroke-width="1"/>
+
+  <!-- Downward flow arrows on spine -->
+  <line x1="500" y1="100" x2="500" y2="158" stroke="#475569" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+  <line x1="500" y1="180" x2="500" y2="238" stroke="#475569" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+  <line x1="500" y1="260" x2="500" y2="318" stroke="#475569" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+  <!-- Network boundary gap -->
+  <line x1="500" y1="340" x2="500" y2="400" stroke="#fb923c" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr-orange)"/>
+  <line x1="500" y1="420" x2="500" y2="450" stroke="#475569" stroke-width="1.5"/>
+  <line x1="500" y1="460" x2="500" y2="508" stroke="#475569" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+  <line x1="500" y1="530" x2="500" y2="568" stroke="#475569" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+
+  <!-- Return path: dashed cyan path from server back to client -->
+  <path d="M 950 590 L 950 80 L 455 80" fill="none" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="5,5" marker-end="url(#arr-cyan)"/>
+  <text x="965" y="340" fill="#22d3ee" font-size="9" text-anchor="start" transform="rotate(90,965,340)">response</text>
+
+  <!-- ===== CLIENT STEPS ===== -->
+
+  <!-- Step 1: client.Call() -->
+  <circle cx="500" cy="90" r="8" fill="#22d3ee"/>
+  <text x="498" y="95" fill="#020617" font-size="8" font-weight="700" text-anchor="middle">1</text>
+  <rect x="50" y="72" width="400" height="36" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+  <text x="250" y="88" fill="white" font-size="11" font-weight="600" text-anchor="middle">client.Call(method, args)</text>
+  <text x="250" y="101" fill="#94a3b8" font-size="9" text-anchor="middle">context + timeout deadline propagation</text>
+
+  <!-- Step 2: Interceptor Chain (outbound) -->
+  <circle cx="500" cy="170" r="8" fill="#22d3ee"/>
+  <text x="498" y="175" fill="#020617" font-size="8" font-weight="700" text-anchor="middle">2</text>
+  <rect x="50" y="152" width="400" height="36" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+  <text x="250" y="168" fill="white" font-size="11" font-weight="600" text-anchor="middle">Interceptor Chain (outbound)</text>
+  <text x="250" y="181" fill="#94a3b8" font-size="9" text-anchor="middle">Retry / RateLimit / CircuitBreaker / Tracing</text>
+
+  <!-- Step 3: Pool.Get() -->
+  <circle cx="500" cy="250" r="8" fill="#22d3ee"/>
+  <text x="498" y="255" fill="#020617" font-size="8" font-weight="700" text-anchor="middle">3</text>
+  <rect x="50" y="232" width="400" height="36" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+  <text x="250" y="248" fill="white" font-size="11" font-weight="600" text-anchor="middle">Pool.Get() — TCP Connection</text>
+  <text x="250" y="261" fill="#94a3b8" font-size="9" text-anchor="middle">acquire from connection pool or dial new</text>
+
+  <!-- Step 4: Encode & Write -->
+  <circle cx="500" cy="330" r="8" fill="#fb7185"/>
+  <text x="498" y="335" fill="#020617" font-size="8" font-weight="700" text-anchor="middle">4</text>
+  <rect x="50" y="312" width="400" height="36" rx="6" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.5"/>
+  <text x="250" y="328" fill="white" font-size="11" font-weight="600" text-anchor="middle">Encode &amp; Write to wire</text>
+  <text x="250" y="341" fill="#94a3b8" font-size="9" text-anchor="middle">header(20B) + codec.Marshal(args)</text>
+
+  <!-- Network Boundary -->
+  <line x1="20" y1="390" x2="980" y2="390" stroke="#475569" stroke-width="1" stroke-dasharray="6,4"/>
+  <text x="500" y="386" fill="#475569" font-size="9" text-anchor="middle">TCP NETWORK BOUNDARY</text>
+  <text x="500" y="404" fill="#fb923c" font-size="8" text-anchor="middle">frame travels over the wire as binary bytes</text>
+
+  <!-- ===== SERVER STEPS ===== -->
+
+  <!-- Step 5: Read & Decode -->
+  <circle cx="500" cy="440" r="8" fill="#fb7185"/>
+  <text x="498" y="445" fill="#020617" font-size="8" font-weight="700" text-anchor="middle">5</text>
+  <rect x="550" y="422" width="400" height="36" rx="6" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.5"/>
+  <text x="750" y="438" fill="white" font-size="11" font-weight="600" text-anchor="middle">Read &amp; Decode from wire</text>
+  <text x="750" y="451" fill="#94a3b8" font-size="9" text-anchor="middle">parse 20B header + codec.Unmarshal(body)</text>
+
+  <!-- Step 6: Dispatcher -->
+  <circle cx="500" cy="520" r="8" fill="#34d399"/>
+  <text x="498" y="525" fill="#020617" font-size="8" font-weight="700" text-anchor="middle">6</text>
+  <rect x="550" y="502" width="400" height="36" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+  <text x="750" y="518" fill="white" font-size="11" font-weight="600" text-anchor="middle">Dispatcher.Dispatch()</text>
+  <text x="750" y="531" fill="#94a3b8" font-size="9" text-anchor="middle">route by method name via reflect</text>
+
+  <!-- Step 7: Interceptors + Handler -->
+  <circle cx="500" cy="580" r="8" fill="#34d399"/>
+  <text x="498" y="585" fill="#020617" font-size="8" font-weight="700" text-anchor="middle">7</text>
+  <rect x="550" y="562" width="400" height="36" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+  <text x="750" y="578" fill="white" font-size="11" font-weight="600" text-anchor="middle">Interceptors (inbound) + Handler</text>
+  <text x="750" y="591" fill="#94a3b8" font-size="9" text-anchor="middle">Recovery / Logging / Metrics / Tracing</text>
+
+  <!-- Response annotation -->
+  <text x="500" y="640" fill="#94a3b8" font-size="9" text-anchor="middle">response propagates back through interceptors → connection pool release → caller receives result</text>
+</svg>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <div class="card-header"><div class="card-dot cyan"></div><h3>Client Path</h3></div>
+        <ul>
+          <li>context + deadline propagation</li>
+          <li>interceptor chain (onion model)</li>
+          <li>connection pool acquire / release</li>
+          <li>binary encode to wire</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-dot emerald"></div><h3>Server Path</h3></div>
+        <ul>
+          <li>binary decode from wire</li>
+          <li>dispatcher via reflection</li>
+          <li>interceptor chain + handler execute</li>
+          <li>response encode back to wire</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-dot orange"></div><h3>Wire Format</h3></div>
+        <ul>
+          <li>20-byte fixed header always read first</li>
+          <li>RequestID enables concurrent multiplexing</li>
+          <li>codec: JSON (default) or Protobuf</li>
+          <li>compression: Gzip or Snappy optional</li>
+        </ul>
+      </div>
+    </div>
+    <p class="footer">RPCinGo • High-performance Go RPC Framework • Request Lifecycle</p>
+  </div>
+</body>
+</html>

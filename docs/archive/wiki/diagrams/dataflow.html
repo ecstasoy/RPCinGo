@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RPCinGo — Data Flow &amp; Wire Format</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'JetBrains Mono', monospace; background: #020617; min-height: 100vh; padding: 2rem; color: white; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .header { margin-bottom: 2rem; }
+    .header-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; }
+    .pulse-dot { width: 12px; height: 12px; background: #22d3ee; border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.025em; }
+    .subtitle { color: #94a3b8; font-size: 0.875rem; margin-left: 1.75rem; }
+    .diagram-container { background: rgba(15, 23, 42, 0.5); border-radius: 1rem; border: 1px solid #1e293b; padding: 1.5rem; overflow-x: auto; }
+    svg { width: 100%; min-width: 900px; display: block; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: 2rem; }
+    .card { background: rgba(15, 23, 42, 0.5); border-radius: 0.75rem; border: 1px solid #1e293b; padding: 1.25rem; }
+    .card-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .card-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .card-dot.cyan { background: #22d3ee; }
+    .card-dot.emerald { background: #34d399; }
+    .card-dot.violet { background: #a78bfa; }
+    .card-dot.amber { background: #fbbf24; }
+    .card-dot.rose { background: #fb7185; }
+    .card-dot.orange { background: #fb923c; }
+    .card h3 { font-size: 0.875rem; font-weight: 600; }
+    .card ul { list-style: none; color: #94a3b8; font-size: 0.75rem; }
+    .card li { margin-bottom: 0.375rem; }
+    .footer { text-align: center; margin-top: 1.5rem; color: #475569; font-size: 0.75rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-row"><div class="pulse-dot"></div><h1>RPCinGo — Data Flow &amp; Wire Format</h1></div>
+      <p class="subtitle">From Go struct to bytes on the wire and back. Codec + compression + 20-byte binary header.</p>
+    </div>
+    <div class="diagram-container">
+<svg viewBox="0 0 1000 620" font-family="'JetBrains Mono', monospace" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+    </pattern>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
+    </marker>
+    <marker id="arr-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#22d3ee" />
+    </marker>
+    <marker id="arr-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#34d399" />
+    </marker>
+    <marker id="arr-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#fb923c" />
+    </marker>
+    <marker id="arr-rose" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#fb7185" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1000" height="620" fill="#020617"/>
+  <rect width="1000" height="620" fill="url(#grid)"/>
+
+  <!-- ===== ENCODE PATH LABEL ===== -->
+  <text x="20" y="62" fill="#22d3ee" font-size="12" font-weight="600">ENCODE PATH — CLIENT → SERVER</text>
+
+  <!-- Encode path arrows (drawn first) -->
+  <line x1="172" y1="120" x2="218" y2="120" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arr-cyan)"/>
+  <text x="195" y="113" fill="#22d3ee" font-size="7.5" text-anchor="middle">codec.Encode()</text>
+
+  <line x1="372" y1="120" x2="418" y2="120" stroke="#34d399" stroke-width="1.5" marker-end="url(#arr-emerald)"/>
+  <text x="395" y="113" fill="#34d399" font-size="7.5" text-anchor="middle">compress?</text>
+
+  <line x1="552" y1="120" x2="598" y2="120" stroke="#34d399" stroke-width="1.5" marker-end="url(#arr-emerald)"/>
+  <text x="575" y="113" fill="#34d399" font-size="7.5" text-anchor="middle">prepend header</text>
+
+  <!-- Arrow down from wire frame to decode path -->
+  <line x1="780" y1="165" x2="680" y2="298" stroke="#fb923c" stroke-width="2" marker-end="url(#arr-orange)"/>
+  <text x="750" y="240" fill="#fb923c" font-size="8" text-anchor="middle" transform="rotate(-55,750,240)">TCP write/read</text>
+
+  <!-- ===== ENCODE PATH BOXES ===== -->
+
+  <!-- Go Request Struct -->
+  <rect x="20" y="78" width="152" height="84" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+  <text x="96" y="98" fill="white" font-size="11" font-weight="600" text-anchor="middle">Request{}</text>
+  <text x="96" y="114" fill="#94a3b8" font-size="8.5" text-anchor="middle">.Method string</text>
+  <text x="96" y="128" fill="#94a3b8" font-size="8.5" text-anchor="middle">.Args interface{}</text>
+  <text x="96" y="142" fill="#94a3b8" font-size="8.5" text-anchor="middle">.ID uint64</text>
+
+  <!-- Codec Box -->
+  <rect x="218" y="78" width="154" height="84" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+  <text x="295" y="98" fill="white" font-size="11" font-weight="600" text-anchor="middle">Codec</text>
+  <text x="295" y="114" fill="#34d399" font-size="8.5" text-anchor="middle">json.Marshal()</text>
+  <text x="295" y="128" fill="#94a3b8" font-size="8.5" text-anchor="middle">— or —</text>
+  <text x="295" y="142" fill="#34d399" font-size="8.5" text-anchor="middle">proto.Marshal()</text>
+
+  <!-- Compressor -->
+  <rect x="418" y="78" width="134" height="84" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+  <text x="485" y="98" fill="white" font-size="11" font-weight="600" text-anchor="middle">Compressor</text>
+  <text x="485" y="114" fill="#34d399" font-size="8.5" text-anchor="middle">gzip.Writer</text>
+  <text x="485" y="128" fill="#94a3b8" font-size="8.5" text-anchor="middle">— or —</text>
+  <text x="485" y="142" fill="#34d399" font-size="8.5" text-anchor="middle">snappy.Encode()</text>
+
+  <!-- Wire Frame (large orange box) -->
+  <rect x="598" y="68" width="382" height="100" rx="6" fill="rgba(251,146,60,0.3)" stroke="#fb923c" stroke-width="2"/>
+  <text x="789" y="88" fill="white" font-size="12" font-weight="700" text-anchor="middle">[ WIRE FRAME ]</text>
+  <!-- Inner dark rect showing header bytes -->
+  <rect x="610" y="94" width="358" height="60" rx="4" fill="rgba(0,0,0,0.55)"/>
+  <text x="789" y="110" fill="#fb923c" font-size="8" text-anchor="middle" font-weight="600">20-BYTE FIXED HEADER</text>
+  <text x="789" y="123" fill="#94a3b8" font-size="7.5" text-anchor="middle">Magic(2) | Ver(1) | MsgType(1) | Codec(1) | Compress(1)</text>
+  <text x="789" y="136" fill="#94a3b8" font-size="7.5" text-anchor="middle">Reserved(2) | RequestID(8) | BodyLen(4) = 20 bytes</text>
+  <text x="789" y="149" fill="#fb923c" font-size="7" text-anchor="middle">+ Body: N bytes (codec-encoded, optionally compressed)</text>
+
+  <!-- ===== DECODE PATH LABEL ===== -->
+  <text x="20" y="282" fill="#34d399" font-size="12" font-weight="600">DECODE PATH — SERVER SIDE</text>
+
+  <!-- Decode path arrows (right to left) -->
+  <line x1="596" y1="340" x2="550" y2="340" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arr-rose)"/>
+  <text x="573" y="333" fill="#fb7185" font-size="7.5" text-anchor="middle">decompress?</text>
+
+  <line x1="396" y1="340" x2="350" y2="340" stroke="#34d399" stroke-width="1.5" marker-end="url(#arr-emerald)"/>
+  <text x="373" y="333" fill="#34d399" font-size="7.5" text-anchor="middle">codec.Decode()</text>
+
+  <line x1="207" y1="340" x2="165" y2="340" stroke="#34d399" stroke-width="1.5" marker-end="url(#arr-emerald)"/>
+
+  <!-- ===== DECODE PATH BOXES ===== -->
+
+  <!-- TCP Read -->
+  <rect x="596" y="298" width="164" height="84" rx="6" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.5"/>
+  <text x="678" y="318" fill="white" font-size="11" font-weight="600" text-anchor="middle">net.Conn.Read()</text>
+  <text x="678" y="334" fill="#94a3b8" font-size="8.5" text-anchor="middle">read 20 bytes</text>
+  <text x="678" y="348" fill="#94a3b8" font-size="8.5" text-anchor="middle">parse header fields</text>
+  <text x="678" y="362" fill="#94a3b8" font-size="8.5" text-anchor="middle">read BodyLen bytes</text>
+
+  <!-- Decompressor -->
+  <rect x="396" y="298" width="154" height="84" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+  <text x="473" y="318" fill="white" font-size="11" font-weight="600" text-anchor="middle">Decompressor</text>
+  <text x="473" y="334" fill="#34d399" font-size="8.5" text-anchor="middle">gzip.Reader</text>
+  <text x="473" y="348" fill="#94a3b8" font-size="8.5" text-anchor="middle">— or —</text>
+  <text x="473" y="362" fill="#34d399" font-size="8.5" text-anchor="middle">snappy.Decode()</text>
+
+  <!-- Codec Decode -->
+  <rect x="207" y="298" width="143" height="84" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+  <text x="278" y="318" fill="white" font-size="11" font-weight="600" text-anchor="middle">Codec.Decode()</text>
+  <text x="278" y="334" fill="#34d399" font-size="8.5" text-anchor="middle">json.Unmarshal()</text>
+  <text x="278" y="348" fill="#94a3b8" font-size="8.5" text-anchor="middle">— or —</text>
+  <text x="278" y="362" fill="#34d399" font-size="8.5" text-anchor="middle">proto.Unmarshal()</text>
+
+  <!-- reflect.Call -->
+  <rect x="20" y="298" width="147" height="84" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+  <text x="93" y="318" fill="white" font-size="11" font-weight="600" text-anchor="middle">reflect.Call()</text>
+  <text x="93" y="334" fill="#94a3b8" font-size="8.5" text-anchor="middle">dispatch to</text>
+  <text x="93" y="348" fill="#34d399" font-size="8.5" text-anchor="middle">service method</text>
+  <text x="93" y="362" fill="#94a3b8" font-size="8.5" text-anchor="middle">via reflection</text>
+
+  <!-- ===== CODEC COMPARISON ===== -->
+  <text x="500" y="422" fill="#94a3b8" font-size="10" font-weight="600" text-anchor="middle">CODEC COMPARISON</text>
+
+  <!-- JSON Codec -->
+  <rect x="100" y="435" width="310" height="130" rx="6" fill="rgba(6,78,59,0.35)" stroke="#34d399" stroke-width="1.5"/>
+  <text x="255" y="455" fill="white" font-size="12" font-weight="700" text-anchor="middle">JSON (default)</text>
+  <text x="255" y="473" fill="#34d399" font-size="9" text-anchor="middle">encoding/json stdlib</text>
+  <text x="255" y="490" fill="#94a3b8" font-size="8.5" text-anchor="middle">human-readable, self-describing</text>
+  <text x="255" y="505" fill="#94a3b8" font-size="8.5" text-anchor="middle">larger payload, slower marshal</text>
+  <text x="255" y="522" fill="#22d3ee" font-size="8" text-anchor="middle">interface: Encode(v) ([]byte, error)</text>
+  <text x="255" y="537" fill="#22d3ee" font-size="8" text-anchor="middle">         Decode(b, v) error</text>
+  <text x="255" y="554" fill="#fbbf24" font-size="8" text-anchor="middle">codec type byte = 0x01</text>
+
+  <!-- VS label -->
+  <text x="500" y="505" fill="#475569" font-size="14" font-weight="700" text-anchor="middle">vs</text>
+
+  <!-- Protobuf Codec -->
+  <rect x="590" y="435" width="310" height="130" rx="6" fill="rgba(76,29,149,0.35)" stroke="#a78bfa" stroke-width="1.5"/>
+  <text x="745" y="455" fill="white" font-size="12" font-weight="700" text-anchor="middle">Protobuf</text>
+  <text x="745" y="473" fill="#a78bfa" font-size="9" text-anchor="middle">google.golang.org/protobuf</text>
+  <text x="745" y="490" fill="#94a3b8" font-size="8.5" text-anchor="middle">binary, schema-required</text>
+  <text x="745" y="505" fill="#94a3b8" font-size="8.5" text-anchor="middle">smaller payload, faster marshal</text>
+  <text x="745" y="522" fill="#a78bfa" font-size="8" text-anchor="middle">interface: Encode(v) ([]byte, error)</text>
+  <text x="745" y="537" fill="#a78bfa" font-size="8" text-anchor="middle">         Decode(b, v) error</text>
+  <text x="745" y="554" fill="#fbbf24" font-size="8" text-anchor="middle">codec type byte = 0x02</text>
+</svg>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <div class="card-header"><div class="card-dot orange"></div><h3>Wire Frame</h3></div>
+        <ul>
+          <li>Magic: 0xCAFE (2 bytes) — frame identifier</li>
+          <li>Version (1B) + MsgType req=1/resp=2 (1B)</li>
+          <li>CodecType (1B) + CompressType (1B)</li>
+          <li>RequestID: 8 bytes — enables multiplexing</li>
+          <li>BodyLen: 4 bytes — then read body</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-dot emerald"></div><h3>Codec</h3></div>
+        <ul>
+          <li>JSON: encoding/json, text-based, default</li>
+          <li>Protobuf: binary, schema-required, faster</li>
+          <li>Encode(interface{}) ([]byte, error)</li>
+          <li>Decode([]byte, interface{}) error</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-dot cyan"></div><h3>Compression</h3></div>
+        <ul>
+          <li>None (0): default, zero overhead</li>
+          <li>Gzip (1): best ratio, higher CPU cost</li>
+          <li>Snappy (2): fast compression, moderate ratio</li>
+          <li>Negotiated via CompressType header byte</li>
+        </ul>
+      </div>
+    </div>
+    <p class="footer">RPCinGo • High-performance Go RPC Framework • Data Flow &amp; Wire Format</p>
+  </div>
+</body>
+</html>

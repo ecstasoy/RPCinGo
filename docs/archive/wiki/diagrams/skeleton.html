@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RPCinGo — Package Architecture</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'JetBrains Mono', monospace; background: #020617; min-height: 100vh; padding: 2rem; color: white; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .header { margin-bottom: 2rem; }
+    .header-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; }
+    .pulse-dot { width: 12px; height: 12px; background: #22d3ee; border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.025em; }
+    .subtitle { color: #94a3b8; font-size: 0.875rem; margin-left: 1.75rem; }
+    .diagram-container { background: rgba(15, 23, 42, 0.5); border-radius: 1rem; border: 1px solid #1e293b; padding: 1.5rem; overflow-x: auto; }
+    svg { width: 100%; min-width: 900px; display: block; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: 2rem; }
+    .card { background: rgba(15, 23, 42, 0.5); border-radius: 0.75rem; border: 1px solid #1e293b; padding: 1.25rem; }
+    .card-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .card-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .card-dot.cyan { background: #22d3ee; }
+    .card-dot.emerald { background: #34d399; }
+    .card-dot.violet { background: #a78bfa; }
+    .card-dot.amber { background: #fbbf24; }
+    .card-dot.rose { background: #fb7185; }
+    .card-dot.orange { background: #fb923c; }
+    .card h3 { font-size: 0.875rem; font-weight: 600; }
+    .card ul { list-style: none; color: #94a3b8; font-size: 0.75rem; }
+    .card li { margin-bottom: 0.375rem; }
+    .footer { text-align: center; margin-top: 1.5rem; color: #475569; font-size: 0.75rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-row"><div class="pulse-dot"></div><h1>RPCinGo — Package Architecture</h1></div>
+      <p class="subtitle">14 packages organized in layered bands. Foundation at bottom, cross-cutting concerns on the right.</p>
+    </div>
+    <div class="diagram-container">
+<svg viewBox="0 0 1000 660" font-family="'JetBrains Mono', monospace" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+    </pattern>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
+    </marker>
+    <marker id="arr-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#34d399" />
+    </marker>
+    <marker id="arr-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#22d3ee" />
+    </marker>
+    <marker id="arr-rose" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#fb7185" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1000" height="660" fill="#020617"/>
+  <rect width="1000" height="660" fill="url(#grid)"/>
+
+  <!-- ===== DEPENDENCY ARROWS (drawn first, behind bands) ===== -->
+  <!-- Layer 0 → Layer 1 upward arrows -->
+  <line x1="120" y1="455" x2="120" y2="418" stroke="#fb7185" stroke-width="1.2" marker-end="url(#arr-rose)"/>
+  <line x1="510" y1="455" x2="360" y2="418" stroke="#34d399" stroke-width="1.2" marker-end="url(#arr-emerald)"/>
+  <line x1="300" y1="455" x2="510" y2="418" stroke="#fb923c" stroke-width="1.2" marker-end="url(#arrowhead)"/>
+
+  <!-- Layer 1 → Layer 2 upward arrows -->
+  <line x1="140" y1="345" x2="200" y2="308" stroke="#34d399" stroke-width="1.2" marker-end="url(#arr-emerald)"/>
+  <line x1="360" y1="345" x2="550" y2="308" stroke="#34d399" stroke-width="1.2" marker-end="url(#arr-emerald)"/>
+  <line x1="590" y1="345" x2="390" y2="308" stroke="#22d3ee" stroke-width="1.2" marker-end="url(#arr-cyan)"/>
+
+  <!-- Layer 2 → Layer 3 upward arrows -->
+  <line x1="200" y1="235" x2="205" y2="198" stroke="#22d3ee" stroke-width="1.2" marker-end="url(#arr-cyan)"/>
+  <line x1="550" y1="235" x2="555" y2="198" stroke="#22d3ee" stroke-width="1.2" marker-end="url(#arr-cyan)"/>
+
+  <!-- Between-layer "depends on" labels -->
+  <text x="16" y="438" fill="#475569" font-size="7.5">↑ uses</text>
+  <text x="16" y="328" fill="#475569" font-size="7.5">↑ uses</text>
+  <text x="16" y="218" fill="#475569" font-size="7.5">↑ uses</text>
+
+  <!-- ===== LAYER 3: ENTRY POINTS (top) ===== -->
+  <rect x="20" y="95" width="740" height="100" rx="8" fill="rgba(8,51,68,0.35)" stroke="#22d3ee" stroke-width="1.5"/>
+  <text x="32" y="114" fill="#22d3ee" font-size="10" font-weight="600" letter-spacing="1">LAYER 3 — Entry Points</text>
+
+  <!-- server.New() entry -->
+  <rect x="40" y="122" width="330" height="58" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+  <text x="205" y="142" fill="white" font-size="11" font-weight="600" text-anchor="middle">server.New() + server.Start()</text>
+  <text x="205" y="157" fill="#94a3b8" font-size="8.5" text-anchor="middle">Register services, listen TCP, start dispatcher</text>
+  <text x="205" y="171" fill="#34d399" font-size="8" text-anchor="middle">pkg/server · TypedService[T] generic wrapper</text>
+
+  <!-- client.New() entry -->
+  <rect x="390" y="122" width="330" height="58" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+  <text x="555" y="142" fill="white" font-size="11" font-weight="600" text-anchor="middle">client.New() + client.Call()</text>
+  <text x="555" y="157" fill="#94a3b8" font-size="8.5" text-anchor="middle">Dial, pool, intercept, encode, send, recv</text>
+  <text x="555" y="171" fill="#22d3ee" font-size="8" text-anchor="middle">pkg/client · TypedClient[T] generic wrapper</text>
+
+  <!-- ===== LAYER 2: LOGIC ===== -->
+  <rect x="20" y="205" width="740" height="100" rx="8" fill="rgba(8,51,68,0.25)" stroke="#22d3ee" stroke-width="1"/>
+  <text x="32" y="223" fill="#22d3ee" font-size="10" font-weight="600" letter-spacing="1">LAYER 2 — Logic</text>
+
+  <!-- interceptor -->
+  <rect x="40" y="232" width="320" height="58" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+  <text x="200" y="252" fill="white" font-size="11" font-weight="600" text-anchor="middle">interceptor</text>
+  <text x="200" y="267" fill="#94a3b8" font-size="8.5" text-anchor="middle">Chain · ClientInterceptor · ServerInterceptor</text>
+  <text x="200" y="281" fill="#22d3ee" font-size="8" text-anchor="middle">Logging / Metrics / Tracing / Recovery / Retry</text>
+
+  <!-- loadbalancer -->
+  <rect x="380" y="232" width="340" height="58" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+  <text x="550" y="252" fill="white" font-size="11" font-weight="600" text-anchor="middle">loadbalancer</text>
+  <text x="550" y="267" fill="#94a3b8" font-size="8.5" text-anchor="middle">Balancer interface · RoundRobin · Weighted</text>
+  <text x="550" y="281" fill="#22d3ee" font-size="8" text-anchor="middle">ConsistentHash (MD5) · Random</text>
+
+  <!-- ===== LAYER 1: CORE ===== -->
+  <rect x="20" y="315" width="740" height="105" rx="8" fill="rgba(6,78,59,0.15)" stroke="#34d399" stroke-width="1"/>
+  <text x="32" y="333" fill="#34d399" font-size="10" font-weight="600" letter-spacing="1">LAYER 1 — Core</text>
+
+  <!-- pool -->
+  <rect x="40" y="342" width="200" height="62" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+  <text x="140" y="362" fill="white" font-size="11" font-weight="600" text-anchor="middle">pool</text>
+  <text x="140" y="377" fill="#94a3b8" font-size="8.5" text-anchor="middle">ConnectionPool + PoolManager</text>
+  <text x="140" y="391" fill="#34d399" font-size="8" text-anchor="middle">min/max/idle TTL/health check</text>
+
+  <!-- server -->
+  <rect x="260" y="342" width="200" height="62" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+  <text x="360" y="362" fill="white" font-size="11" font-weight="600" text-anchor="middle">server</text>
+  <text x="360" y="377" fill="#94a3b8" font-size="8.5" text-anchor="middle">Server + Service registration</text>
+  <text x="360" y="391" fill="#34d399" font-size="8" text-anchor="middle">reflect.Call dispatcher</text>
+
+  <!-- client core -->
+  <rect x="480" y="342" width="240" height="62" rx="6" fill="rgba(8,51,68,0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+  <text x="600" y="362" fill="white" font-size="11" font-weight="600" text-anchor="middle">client</text>
+  <text x="600" y="377" fill="#94a3b8" font-size="8.5" text-anchor="middle">Client + TypedClient wrapper</text>
+  <text x="600" y="391" fill="#22d3ee" font-size="8" text-anchor="middle">Pool + Interceptors + LB</text>
+
+  <!-- ===== LAYER 0: FOUNDATION ===== -->
+  <rect x="20" y="425" width="740" height="100" rx="8" fill="rgba(30,41,59,0.3)" stroke="#475569" stroke-width="1" stroke-dasharray="4,4"/>
+  <text x="32" y="443" fill="#475569" font-size="10" font-weight="600" letter-spacing="1">LAYER 0 — Foundation</text>
+
+  <!-- transport/tcp -->
+  <rect x="40" y="452" width="175" height="58" rx="6" fill="rgba(136,19,55,0.4)" stroke="#fb7185" stroke-width="1.5"/>
+  <text x="127" y="472" fill="white" font-size="11" font-weight="600" text-anchor="middle">transport/tcp</text>
+  <text x="127" y="487" fill="#94a3b8" font-size="8.5" text-anchor="middle">net.Listener + net.Conn</text>
+  <text x="127" y="501" fill="#fb7185" font-size="8" text-anchor="middle">framed read/write</text>
+
+  <!-- protocol -->
+  <rect x="235" y="452" width="175" height="58" rx="6" fill="rgba(251,146,60,0.3)" stroke="#fb923c" stroke-width="1.5"/>
+  <text x="322" y="472" fill="white" font-size="11" font-weight="600" text-anchor="middle">protocol</text>
+  <text x="322" y="487" fill="#94a3b8" font-size="8.5" text-anchor="middle">20-byte header encode</text>
+  <text x="322" y="501" fill="#fb923c" font-size="8" text-anchor="middle">Magic 0xCAFE · decode</text>
+
+  <!-- codec -->
+  <rect x="430" y="452" width="300" height="58" rx="6" fill="rgba(6,78,59,0.4)" stroke="#34d399" stroke-width="1.5"/>
+  <text x="580" y="472" fill="white" font-size="11" font-weight="600" text-anchor="middle">codec</text>
+  <text x="580" y="487" fill="#94a3b8" font-size="8.5" text-anchor="middle">json · protobuf · Compressor</text>
+  <text x="580" y="501" fill="#34d399" font-size="8" text-anchor="middle">Encode/Decode interface</text>
+
+  <!-- ===== CROSS-CUTTING COLUMN (right side) ===== -->
+  <rect x="770" y="80" width="210" height="470" rx="8" fill="rgba(120,53,15,0.15)" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="6,4"/>
+  <text x="782" y="100" fill="#fbbf24" font-size="9" font-weight="600" letter-spacing="1">CROSS-CUTTING</text>
+
+  <!-- registry -->
+  <rect x="780" y="108" width="190" height="62" rx="6" fill="rgba(76,29,149,0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+  <text x="875" y="129" fill="white" font-size="11" font-weight="600" text-anchor="middle">registry</text>
+  <text x="875" y="145" fill="#94a3b8" font-size="8.5" text-anchor="middle">etcd + in-memory</text>
+  <text x="875" y="160" fill="#a78bfa" font-size="8" text-anchor="middle">Register / Discover / Watch</text>
+
+  <!-- circuitbreaker -->
+  <rect x="780" y="182" width="190" height="62" rx="6" fill="rgba(120,53,15,0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+  <text x="875" y="202" fill="white" font-size="11" font-weight="600" text-anchor="middle">circuitbreaker</text>
+  <text x="875" y="218" fill="#94a3b8" font-size="8.5" text-anchor="middle">Closed→Open→HalfOpen</text>
+  <text x="875" y="233" fill="#fbbf24" font-size="8" text-anchor="middle">sliding window counter</text>
+
+  <!-- ratelimiter -->
+  <rect x="780" y="256" width="190" height="62" rx="6" fill="rgba(120,53,15,0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+  <text x="875" y="276" fill="white" font-size="11" font-weight="600" text-anchor="middle">ratelimiter</text>
+  <text x="875" y="292" fill="#94a3b8" font-size="8.5" text-anchor="middle">token bucket algorithm</text>
+  <text x="875" y="307" fill="#fbbf24" font-size="8" text-anchor="middle">per-client rate control</text>
+
+  <!-- logger -->
+  <rect x="780" y="330" width="190" height="62" rx="6" fill="rgba(30,41,59,0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="875" y="350" fill="white" font-size="11" font-weight="600" text-anchor="middle">logger</text>
+  <text x="875" y="366" fill="#94a3b8" font-size="8.5" text-anchor="middle">slog-backed, levelled</text>
+  <text x="875" y="381" fill="#94a3b8" font-size="8" text-anchor="middle">Debug / Info / Warn / Error</text>
+
+  <!-- tracing -->
+  <rect x="780" y="404" width="190" height="62" rx="6" fill="rgba(120,53,15,0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+  <text x="875" y="424" fill="white" font-size="11" font-weight="600" text-anchor="middle">tracing (OTel)</text>
+  <text x="875" y="440" fill="#94a3b8" font-size="8.5" text-anchor="middle">Jaeger exporter</text>
+  <text x="875" y="455" fill="#fbbf24" font-size="8" text-anchor="middle">span propagation via ctx</text>
+
+  <!-- ===== pkg/logger badge at bottom ===== -->
+  <rect x="20" y="545" width="740" height="80" rx="8" fill="rgba(15,23,42,0.6)" stroke="#1e293b" stroke-width="1"/>
+  <text x="380" y="565" fill="#94a3b8" font-size="10" font-weight="600" text-anchor="middle">Package Import Paths</text>
+  <text x="380" y="583" fill="#475569" font-size="8.5" text-anchor="middle">github.com/yourorg/RPCinGo/pkg/{server,client,pool,codec,protocol,interceptor,loadbalancer}</text>
+  <text x="380" y="598" fill="#475569" font-size="8.5" text-anchor="middle">github.com/yourorg/RPCinGo/pkg/{registry,circuitbreaker,ratelimiter,logger,transport/tcp}</text>
+  <text x="380" y="614" fill="#475569" font-size="8" text-anchor="middle">All packages are independently importable · No circular dependencies</text>
+</svg>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <div class="card-header"><div class="card-dot rose"></div><h3>Transport</h3></div>
+        <ul>
+          <li>TCP transport with length-prefixed framing</li>
+          <li>20-byte binary header on every frame</li>
+          <li>Full-duplex multiplexed connections</li>
+          <li>Connection pool with health checks</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-dot emerald"></div><h3>Core RPC</h3></div>
+        <ul>
+          <li>Server: reflect-based method dispatch</li>
+          <li>TypedService[T] generic server wrapper</li>
+          <li>TypedClient[T] generic client wrapper</li>
+          <li>Context deadlines + error wrapping</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-dot amber"></div><h3>Resilience</h3></div>
+        <ul>
+          <li>Circuit breaker — sliding window states</li>
+          <li>Rate limiter — token bucket algorithm</li>
+          <li>Retry interceptor — configurable attempts</li>
+          <li>Load balancer — 4 selection strategies</li>
+        </ul>
+      </div>
+    </div>
+    <p class="footer">RPCinGo • High-performance Go RPC Framework • Package Architecture</p>
+  </div>
+</body>
+</html>
