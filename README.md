@@ -161,6 +161,10 @@ go http.ListenAndServe(":9091", promhttp.Handler())
 | `Retry(n, interval)` | Client | Retries on transient errors only |
 | `RateLimit(limiter)` | Both | Token bucket or sliding window |
 
+## Documentation
+
+The authoritative docs live under [`deepwiki/`](deepwiki/INDEX.md) — overview, architecture, data flow, per-module references, and diagrams. Historical design notes, tutorials, and interview materials are archived under `docs/archive/`.
+
 ## Tech Stack
 
 Go &middot; TCP &middot; etcd v3 &middot; Protocol Buffers &middot; OpenTelemetry &middot; Jaeger &middot; Prometheus
