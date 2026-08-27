@@ -46,3 +46,15 @@ scripts/default.etcd/
 
 # Debug logs
 tagbardebug.log
+
+# macOS
+.DS_Store
+
+# Local tooling output (knowledge-graph / diagram staging), not project artifacts
+graphify-out/
+pkg/graphify-out/
+.codex-skill-staging/
+
+# Personal interview prep, kept out of the repo
+rpcingo-grilling-notes.md
+rpcingo-interview-kb.pdf
