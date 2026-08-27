@@ -25,6 +25,8 @@ type ProtocolCodec struct {
 	compressType protocol.CompressType
 }
 
+// NewProtocolCodec returns a ProtocolCodec configured for the supplied body
+// codec and compression type.
 func NewProtocolCodec(codecType protocol.CodecType, compressorType protocol.CompressType) *ProtocolCodec {
 	return &ProtocolCodec{
 		codec:        codec.GetOrDefault(codecType),
@@ -34,6 +36,7 @@ func NewProtocolCodec(codecType protocol.CodecType, compressorType protocol.Comp
 	}
 }
 
+// EncodeRequest serializes req into header-plus-body wire bytes.
 func (pc *ProtocolCodec) EncodeRequest(req *protocol.Request) ([]byte, error) {
 	bodyData, err := pc.codec.Encode(req)
 	if err != nil {
@@ -63,6 +66,7 @@ func (pc *ProtocolCodec) EncodeRequest(req *protocol.Request) ([]byte, error) {
 	return result, nil
 }
 
+// EncodeResponse serializes resp into header-plus-body wire bytes.
 func (pc *ProtocolCodec) EncodeResponse(resp *protocol.Response) ([]byte, error) {
 	bodyData, err := pc.codec.Encode(resp)
 	if err != nil {
@@ -92,6 +96,8 @@ func (pc *ProtocolCodec) EncodeResponse(resp *protocol.Response) ([]byte, error)
 	return result, nil
 }
 
+// DecodeFromReader reads one full frame, validates the header, and
+// decompresses the body.
 func (pc *ProtocolCodec) DecodeFromReader(r io.Reader) (*protocol.Header, []byte, error) {
 	headerBytes := make([]byte, protocol.HeaderLength)
 	if _, err := io.ReadFull(r, headerBytes); err != nil {
@@ -124,22 +130,39 @@ func (pc *ProtocolCodec) getCompressorByType(compressType protocol.CompressType)
 	return compressor
 }
 
+// DecodeRequest decodes one request body using the connection's static codec.
 func (pc *ProtocolCodec) DecodeRequest(data []byte) (*protocol.Request, error) {
+	return pc.DecodeRequestWith(pc.codecType, data)
+}
+
+// DecodeRequestWith decodes one request body using the codec advertised in the
+// frame header. Honouring the header byte makes the on-wire Codec field
+// meaningful rather than dead metadata, and lets a peer encode a frame with a
+// codec other than the connection default.
+func (pc *ProtocolCodec) DecodeRequestWith(codecType protocol.CodecType, data []byte) (*protocol.Request, error) {
 	var req protocol.Request
-	if err := pc.codec.Decode(data, &req); err != nil {
+	if err := codec.GetOrDefault(codecType).Decode(data, &req); err != nil {
 		return nil, fmt.Errorf("decode request error: %w", err)
 	}
 	return &req, nil
 }
 
+// DecodeResponse decodes one response body using the connection's static codec.
 func (pc *ProtocolCodec) DecodeResponse(data []byte) (*protocol.Response, error) {
+	return pc.DecodeResponseWith(pc.codecType, data)
+}
+
+// DecodeResponseWith decodes one response body using the codec advertised in the
+// frame header.
+func (pc *ProtocolCodec) DecodeResponseWith(codecType protocol.CodecType, data []byte) (*protocol.Response, error) {
 	var resp protocol.Response
-	if err := pc.codec.Decode(data, &resp); err != nil {
+	if err := codec.GetOrDefault(codecType).Decode(data, &resp); err != nil {
 		return nil, fmt.Errorf("decode response error: %w", err)
 	}
 	return &resp, nil
 }
 
+// WriteRequest encodes and writes one framed request to w.
 func (pc *ProtocolCodec) WriteRequest(w io.Writer, req *protocol.Request) error {
 	data, err := pc.EncodeRequest(req)
 	if err != nil {
@@ -153,6 +176,7 @@ func (pc *ProtocolCodec) WriteRequest(w io.Writer, req *protocol.Request) error 
 	return nil
 }
 
+// WriteResponse encodes and writes one framed response to w.
 func (pc *ProtocolCodec) WriteResponse(w io.Writer, resp *protocol.Response) error {
 	data, err := pc.EncodeResponse(resp)
 	if err != nil {
@@ -166,6 +190,7 @@ func (pc *ProtocolCodec) WriteResponse(w io.Writer, resp *protocol.Response) err
 	return nil
 }
 
+// ReadRequest reads and decodes one framed request from r.
 func (pc *ProtocolCodec) ReadRequest(r io.Reader) (*protocol.Header, *protocol.Request, error) {
 	header, bodyData, err := pc.DecodeFromReader(r)
 	if err != nil {
@@ -176,7 +201,7 @@ func (pc *ProtocolCodec) ReadRequest(r io.Reader) (*protocol.Header, *protocol.R
 		return nil, nil, fmt.Errorf("message type error, expected %s, got %s", protocol.MsgTypeRequest, header.MsgType)
 	}
 
-	req, err := pc.DecodeRequest(bodyData)
+	req, err := pc.DecodeRequestWith(header.Codec, bodyData)
 	if err != nil {
 		return nil, nil, fmt.Errorf("decode request error: %w", err)
 	}
@@ -184,6 +209,7 @@ func (pc *ProtocolCodec) ReadRequest(r io.Reader) (*protocol.Header, *protocol.R
 	return header, req, nil
 }
 
+// ReadResponse reads and decodes one framed response from r.
 func (pc *ProtocolCodec) ReadResponse(r io.Reader) (*protocol.Header, *protocol.Response, error) {
 	header, bodyData, err := pc.DecodeFromReader(r)
 	if err != nil {
@@ -194,7 +220,7 @@ func (pc *ProtocolCodec) ReadResponse(r io.Reader) (*protocol.Header, *protocol.
 		return nil, nil, fmt.Errorf("message type error, expected %s, got %s", protocol.MsgTypeResponse, header.MsgType)
 	}
 
-	resp, err := pc.DecodeResponse(bodyData)
+	resp, err := pc.DecodeResponseWith(header.Codec, bodyData)
 	if err != nil {
 		return nil, nil, fmt.Errorf("decode response error: %w", err)
 	}
