@@ -58,3 +58,8 @@ pkg/graphify-out/
 # Personal interview prep, kept out of the repo
 rpcingo-grilling-notes.md
 rpcingo-interview-kb.pdf
+
+# Prose documentation and agent instructions, kept out of the repository
+deepwiki/
+docs/
+CLAUDE.md
