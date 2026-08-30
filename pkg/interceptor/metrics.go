@@ -3,8 +3,8 @@
 package interceptor
 
 import (
-	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 	"context"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"

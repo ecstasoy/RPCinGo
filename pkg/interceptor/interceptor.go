@@ -3,8 +3,8 @@
 package interceptor
 
 import (
-	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 	"context"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 )
 
 // Invoker is the terminal function wrapped by one or more interceptors.

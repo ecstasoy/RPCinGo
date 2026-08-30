@@ -3,9 +3,9 @@
 package interceptor
 
 import (
+	"context"
 	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 	"github.com/ecstasoy/RPCinGo/pkg/ratelimiter"
-	"context"
 )
 
 // RateLimit returns an interceptor that rejects requests when limiter denies

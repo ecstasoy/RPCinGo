@@ -3,8 +3,8 @@
 package transport
 
 import (
-	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 	"context"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 	"io"
 	"net"
 	"time"

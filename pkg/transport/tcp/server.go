@@ -109,7 +109,7 @@ func (s *Server) Serve(ctx context.Context, handler transport.Handler) error {
 	go func() {
 		defer close(done)
 		<-ctx.Done()
-		s.listener.Close()
+		_ = s.listener.Close()
 	}()
 
 	for {
@@ -162,7 +162,7 @@ func (s *Server) Serve(ctx context.Context, handler transport.Handler) error {
 func (s *Server) handleConnection(ctx context.Context, conn net.Conn) error {
 	connCtx, connCancel := context.WithCancel(ctx)
 	defer connCancel()
-	defer s.CloseConnection(conn)
+	defer func() { _ = s.CloseConnection(conn) }()
 
 	if tcpConn, ok := conn.(*net.TCPConn); ok {
 		err := tcpConn.SetKeepAlive(true)
@@ -200,7 +200,7 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) error {
 		defer writerWg.Done()
 		for resp := range writeCh {
 			if s.opts.WriteTimeout > 0 {
-				conn.SetWriteDeadline(time.Now().Add(s.opts.WriteTimeout))
+				_ = conn.SetWriteDeadline(time.Now().Add(s.opts.WriteTimeout))
 			}
 
 			if err := s.codec.WriteResponse(conn, resp); err != nil {
@@ -208,7 +208,7 @@ func (s *Server) handleConnection(ctx context.Context, conn net.Conn) error {
 				connCancel()
 				return
 			}
-			conn.SetWriteDeadline(time.Time{})
+			_ = conn.SetWriteDeadline(time.Time{})
 		}
 	}()
 
@@ -225,14 +225,14 @@ outer:
 		}
 
 		if s.opts.ReadTimeout > 0 {
-			conn.SetReadDeadline(time.Now().Add(s.opts.ReadTimeout))
+			_ = conn.SetReadDeadline(time.Now().Add(s.opts.ReadTimeout))
 		}
 
 		header, req, err := s.codec.ReadRequest(conn)
 		if err != nil {
 			break outer
 		}
-		conn.SetReadDeadline(time.Time{})
+		_ = conn.SetReadDeadline(time.Time{})
 
 		if s.opts.MaxRequestBodySize > 0 && int64(header.BodyLength) > s.opts.MaxRequestBodySize {
 			select {

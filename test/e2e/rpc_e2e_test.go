@@ -1,13 +1,13 @@
 package e2e
 
 import (
-	"github.com/ecstasoy/RPCinGo/pkg/interceptor"
-	"github.com/ecstasoy/RPCinGo/pkg/protocol"
-	"github.com/ecstasoy/RPCinGo/pkg/ratelimiter"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ecstasoy/RPCinGo/pkg/interceptor"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/ratelimiter"
 	"testing"
 	"time"
 
@@ -104,7 +104,7 @@ func TestE2E_MultipleInstances(t *testing.T) {
 	servers := make([]*server.Server, 3)
 	for i := 0; i < 3; i++ {
 		srv := server.NewServer(
-			server.WithAddress(fmt.Sprintf("127.0.0.1:0")),
+			server.WithAddress("127.0.0.1:0"),
 			server.WithRegistry("Calculator", "v1.0.0", memReg),
 		)
 

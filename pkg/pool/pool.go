@@ -640,7 +640,7 @@ func (p *ConnectionPool) GetWithContext(ctx context.Context) (*PooledConnection,
 			return conn, nil
 		}
 
-		conn.Close()
+		_ = conn.Close()
 		atomic.AddInt64(&p.stats.closeCount, 1)
 
 		p.mu.Lock()

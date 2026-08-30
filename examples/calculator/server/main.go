@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/ecstasoy/RPCinGo/pkg/interceptor"
-	"github.com/ecstasoy/RPCinGo/pkg/tracing"
 	"context"
 	"fmt"
+	"github.com/ecstasoy/RPCinGo/pkg/interceptor"
+	"github.com/ecstasoy/RPCinGo/pkg/tracing"
 	"net/http"
 	"os"
 	"os/signal"

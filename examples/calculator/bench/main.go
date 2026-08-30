@@ -55,7 +55,7 @@ func main() {
 				atomic.AddInt64(&totalErrs, 1)
 				return
 			}
-			defer cli.Close()
+			defer func() { _ = cli.Close() }()
 
 			req := &calculator.AddRequest{A: 3, B: 4}
 			resp := &calculator.AddResponse{}

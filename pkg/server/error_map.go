@@ -1,13 +1,13 @@
 package server
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"github.com/ecstasoy/RPCinGo/pkg/circuitbreaker"
 	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 	"github.com/ecstasoy/RPCinGo/pkg/ratelimiter"
 	"github.com/ecstasoy/RPCinGo/pkg/registry"
-	"context"
-	"errors"
-	"fmt"
 )
 
 // ErrInvalidArgument is the sentinel a handler may return to signal a malformed

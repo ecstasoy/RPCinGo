@@ -3,11 +3,11 @@
 package server
 
 import (
-	"github.com/ecstasoy/RPCinGo/pkg/protocol"
-	"github.com/ecstasoy/RPCinGo/pkg/registry"
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/registry"
 	"reflect"
 	"sync"
 
@@ -142,7 +142,7 @@ func (sr *ServiceRegistry) RegisterService(serviceName string, serviceImpl any) 
 	recv := reflect.ValueOf(serviceImpl)
 	typ := recv.Type()
 
-	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Struct {
+	if typ.Kind() != reflect.Pointer || typ.Elem().Kind() != reflect.Struct {
 		return fmt.Errorf("service must be a pointer to struct, got %s", typ.String())
 	}
 
@@ -221,7 +221,7 @@ func methodKind(mt reflect.Type) (rpcMethodKind, bool) {
 }
 
 func isTypedMethod(inType, outType reflect.Type, protoMsgType reflect.Type) bool {
-	if inType.Kind() != reflect.Ptr || outType.Kind() != reflect.Ptr {
+	if inType.Kind() != reflect.Pointer || outType.Kind() != reflect.Pointer {
 		return false
 	}
 

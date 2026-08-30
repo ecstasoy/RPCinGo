@@ -1,10 +1,10 @@
 package client
 
 import (
-	"github.com/ecstasoy/RPCinGo/pkg/circuitbreaker"
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ecstasoy/RPCinGo/pkg/circuitbreaker"
 	"sync"
 
 	"github.com/ecstasoy/RPCinGo/pkg/codec"
