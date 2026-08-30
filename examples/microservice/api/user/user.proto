@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package user;
 
-option go_package = "RPCinGo/examples/microservice/api/user";
+option go_package = "github.com/ecstasoy/RPCinGo/examples/microservice/api/user";
 
 message GetUserRequest {
   int64 id = 1;

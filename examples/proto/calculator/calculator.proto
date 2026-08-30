@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package calculator;
 
-option go_package = "RPCinGo/examples/proto/calculator";
+option go_package = "github.com/ecstasoy/RPCinGo/examples/proto/calculator";
 
 message AddRequest {
   int32 a = 1;
