@@ -4,10 +4,12 @@ package tcp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/ecstasoy/RPCinGo/pkg/protocol"
@@ -129,7 +131,11 @@ func (s *Server) Serve(ctx context.Context, handler transport.Handler) error {
 
 			s.mu.RUnlock()
 
-			if ne, ok := err.(net.Error); ok && ne.Temporary() {
+			// net.Error.Temporary has been deprecated since Go 1.18: it is not
+			// well defined, and most errors it reports are simply timeouts.
+			// Retry only on the descriptor exhaustion this branch existed to
+			// survive; everything else is a real failure and is returned.
+			if errors.Is(err, syscall.EMFILE) || errors.Is(err, syscall.ENFILE) {
 				time.Sleep(10 * time.Millisecond)
 				continue
 			}
