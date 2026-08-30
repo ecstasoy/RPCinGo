@@ -36,22 +36,43 @@ jobs:
         image: quay.io/coreos/etcd:v3.6.7    # 与 go.mod 的 client v3.6.7 同线
         # Service containers cannot override the image command, so etcd is
         # configured entirely through its ETCD_* environment variables.
+        #
+        # No --health-cmd here: this image is distroless (only etcd, etcdctl,
+        # etcdutl on PATH, no /bin/sh), but Docker always runs a health check
+        # as `CMD-SHELL <cmd>`, i.e. via a shell. With no shell present the
+        # probe fails immediately every time, the container is reported
+        # unhealthy once the retry budget elapses, and the runner aborts the
+        # job at "Initialize containers" before any step runs. Readiness is
+        # checked explicitly below instead, on the runner, where a shell
+        # actually exists.
         env:
           ETCD_NAME: ci-etcd
           ETCD_ADVERTISE_CLIENT_URLS: http://0.0.0.0:2379
           ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
         ports:
           - 2379:2379
-        options: >-
-          --health-cmd "etcdctl endpoint health"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+      - name: Wait for etcd
+        # The service container has no health check (see the comment above),
+        # so nothing gates the steps below on etcd actually being reachable.
+        # That matters here specifically because RPCINGO_REQUIRE_ETCD turns
+        # "etcd isn't up yet" into a hard test failure instead of a skip, so
+        # without this gate a slow-starting etcd would fail the build instead
+        # of just running late.
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:2379/health > /dev/null; then
+              echo "etcd ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "etcd never became ready"
+          exit 1
       - name: Test
         # RPCINGO_REQUIRE_ETCD turns a skipped etcd test into a failure. Without
         # it a broken service container would leave those tests unrun behind a

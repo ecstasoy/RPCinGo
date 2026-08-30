@@ -65,6 +65,7 @@ func NewServer(opts ...Option) *Server {
 		transport.WithHandlerTimeout(options.handlerTimeout),
 		transport.WithWorkerPool(options.workerPoolSize),
 		transport.WithMaxConcurrentRequests(options.maxConcurrent),
+		transport.WithLogger(log),
 	}
 	transportOpts = append(transportOpts, options.transportOptions...)
 
