@@ -1,0 +1,32 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+issues:
+  # Report everything. The defaults truncate at 3 identical messages and 50
+  # per linter, which quietly hides the scale of a regression from whoever
+  # has to fix it.
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - ineffassign
+    - unused
+    - misspell
+  exclusions:
+    rules:
+      # Test files ignore return values constantly and deliberately; policing
+      # that adds noise without catching bugs. Production code still must not.
+      - path: _test\.go
+        linters:
+          - errcheck
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
