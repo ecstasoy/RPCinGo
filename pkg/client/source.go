@@ -176,7 +176,7 @@ func (s *discoverySource) handleWatchEvent(service string, event *registry.Event
 		}
 		instances = filtered
 
-		s.poolManager.RemovePool(event.Instance.Endpoint())
+		_ = s.poolManager.RemovePool(event.Instance.Endpoint())
 	case registry.EventTypeUpdate:
 		for i, inst := range instances {
 			if inst.ID == event.Instance.ID {

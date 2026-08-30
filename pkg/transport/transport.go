@@ -4,10 +4,11 @@ package transport
 
 import (
 	"context"
-	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 	"io"
 	"net"
 	"time"
+
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 )
 
 // ClientTransport is the transport abstraction used by RPC clients.

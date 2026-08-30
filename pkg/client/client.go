@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ecstasoy/RPCinGo/pkg/circuitbreaker"
 	"sync"
+
+	"github.com/ecstasoy/RPCinGo/pkg/circuitbreaker"
 
 	"github.com/ecstasoy/RPCinGo/pkg/codec"
 	"github.com/ecstasoy/RPCinGo/pkg/interceptor"
@@ -153,7 +154,7 @@ func (c *Client) callOnce(ctx context.Context, req *protocol.Request) (*protocol
 
 	resp, err := conn.Client.SendRequest(ctx, req)
 	if err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil, fmt.Errorf("send: %w", err)
 	}
 	conn.Release()

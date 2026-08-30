@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"github.com/ecstasoy/RPCinGo/pkg/registry"
 
 	clientv3 "go.etcd.io/etcd/client/v3"

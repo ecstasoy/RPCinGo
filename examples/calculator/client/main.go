@@ -4,13 +4,14 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/ecstasoy/RPCinGo/pkg/interceptor"
-	"github.com/ecstasoy/RPCinGo/pkg/tracing"
 	"math/rand"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/ecstasoy/RPCinGo/pkg/interceptor"
+	"github.com/ecstasoy/RPCinGo/pkg/tracing"
 
 	"github.com/ecstasoy/RPCinGo/examples/proto/calculator"
 	"github.com/ecstasoy/RPCinGo/pkg/client"

@@ -6,6 +6,7 @@ import (
 
 	"go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/otel"
+
 	//nolint:staticcheck // SA1019: the Jaeger exporter is deprecated upstream;
 	// migrating to OTLP is tracked separately and is out of scope for the CI work.
 	"go.opentelemetry.io/otel/exporters/jaeger"

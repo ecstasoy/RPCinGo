@@ -3,12 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/ecstasoy/RPCinGo/pkg/interceptor"
-	"github.com/ecstasoy/RPCinGo/pkg/tracing"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/ecstasoy/RPCinGo/pkg/interceptor"
+	"github.com/ecstasoy/RPCinGo/pkg/tracing"
 
 	"github.com/ecstasoy/RPCinGo/examples/proto/calculator"
 	"github.com/ecstasoy/RPCinGo/pkg/protocol"
@@ -53,7 +54,7 @@ func main() {
 		fmt.Printf("init tracer failed: %v\n", err)
 		os.Exit(1)
 	}
-	defer shutdown(context.Background())
+	defer func() { _ = shutdown(context.Background()) }()
 
 	srv := server.NewServer(
 		server.WithAddress("127.0.0.1:8080"),
@@ -84,7 +85,7 @@ func main() {
 
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
-		http.ListenAndServe(":9091", nil)
+		_ = http.ListenAndServe(":9091", nil)
 	}()
 
 	go func() {
@@ -95,6 +96,6 @@ func main() {
 
 	<-sigChan
 	fmt.Println("\nShutting down server...")
-	srv.Stop()
+	_ = srv.Stop()
 	fmt.Println("Server stopped")
 }

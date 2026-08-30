@@ -2,8 +2,9 @@ package interceptor
 
 import (
 	"context"
-	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 	"testing"
+
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 )
 
 func TestRecovery(t *testing.T) {

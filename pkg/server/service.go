@@ -6,10 +6,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ecstasoy/RPCinGo/pkg/protocol"
-	"github.com/ecstasoy/RPCinGo/pkg/registry"
 	"reflect"
 	"sync"
+
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/registry"
 
 	"google.golang.org/protobuf/proto"
 )

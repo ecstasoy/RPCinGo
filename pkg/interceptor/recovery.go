@@ -5,8 +5,9 @@ package interceptor
 import (
 	"context"
 	"fmt"
-	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 	"runtime/debug"
+
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 )
 
 // Recovery returns an interceptor that converts panics into errors containing

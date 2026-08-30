@@ -126,7 +126,7 @@ func (er *EtcdRegistry) Close() error {
 	close(er.stopCh)
 
 	if er.leaseID != 0 {
-		er.client.Revoke(context.Background(), er.leaseID)
+		_, _ = er.client.Revoke(context.Background(), er.leaseID)
 	}
 
 	return er.EtcdClient.Close()

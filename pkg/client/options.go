@@ -1,8 +1,9 @@
 package client
 
 import (
-	"github.com/ecstasoy/RPCinGo/pkg/ratelimiter"
 	"time"
+
+	"github.com/ecstasoy/RPCinGo/pkg/ratelimiter"
 
 	"github.com/ecstasoy/RPCinGo/pkg/interceptor"
 	"github.com/ecstasoy/RPCinGo/pkg/loadbalancer"
