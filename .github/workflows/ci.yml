@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          # Pinned deliberately: a golangci-lint built with an older Go than
+          # go.mod targets exits 0 while refusing to run, which would look
+          # exactly like a passing lint. Bump this whenever go.mod's Go moves.
+          version: v2.13.2
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      etcd:
+        image: quay.io/coreos/etcd:v3.6.7    # 与 go.mod 的 client v3.6.7 同线
+        # Service containers cannot override the image command, so etcd is
+        # configured entirely through its ETCD_* environment variables.
+        env:
+          ETCD_NAME: ci-etcd
+          ETCD_ADVERTISE_CLIENT_URLS: http://0.0.0.0:2379
+          ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
+        ports:
+          - 2379:2379
+        options: >-
+          --health-cmd "etcdctl endpoint health"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Test
+        # RPCINGO_REQUIRE_ETCD turns a skipped etcd test into a failure. Without
+        # it a broken service container would leave those tests unrun behind a
+        # green check, because Go reports skipped tests as ok.
+        env:
+          RPCINGO_REQUIRE_ETCD: "1"
+        run: go test -race -covermode=atomic -coverprofile=coverage.out ./...
+      - name: Prove the etcd-backed tests actually ran
+        # The main run above is not verbose, so a reader cannot see whether
+        # these two tests executed or skipped. RPCINGO_REQUIRE_ETCD already
+        # makes a skip fail the build; this step makes the evidence visible
+        # in the log, and is what the post-merge check greps for.
+        env:
+          RPCINGO_REQUIRE_ETCD: "1"
+        run: go test -v -count=1 ./pkg/registry/etcd/...
+      - uses: codecov/codecov-action@v7
+        with:
+          files: coverage.out
+          fail_ci_if_error: false
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: coverage.out
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - run: go build ./...
+      - name: Build the example binaries
+        # The examples are covered by no test, so they are the first thing to
+        # rot unnoticed. Compiling them here is the only guard they have.
+        run: |
+          go build -o /dev/null ./examples/calculator/server
+          go build -o /dev/null ./examples/calculator/client
+          go build -o /dev/null ./examples/calculator/bench
+          go build -o /dev/null ./examples/microservice/services/user
+          go build -o /dev/null ./examples/microservice/clients/user
+
+  cross-build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        goos: [linux, darwin, windows]
+        goarch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      # Compile only — the full suite needs the etcd service container, which
+      # only Linux runners provide. This catches platform breakage cheaply and
+      # proves out the cross-compilation the release phase will need.
+      - env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: go build ./...
