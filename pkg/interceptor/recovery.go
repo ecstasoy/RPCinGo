@@ -3,7 +3,7 @@
 package interceptor
 
 import (
-	"RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 	"context"
 	"fmt"
 	"runtime/debug"

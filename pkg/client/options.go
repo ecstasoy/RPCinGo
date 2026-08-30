@@ -1,13 +1,13 @@
 package client
 
 import (
-	"RPCinGo/pkg/ratelimiter"
+	"github.com/ecstasoy/RPCinGo/pkg/ratelimiter"
 	"time"
 
-	"RPCinGo/pkg/interceptor"
-	"RPCinGo/pkg/loadbalancer"
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/registry"
+	"github.com/ecstasoy/RPCinGo/pkg/interceptor"
+	"github.com/ecstasoy/RPCinGo/pkg/loadbalancer"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/registry"
 )
 
 type clientOptions struct {

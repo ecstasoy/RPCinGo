@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"io"
 
-	"RPCinGo/pkg/codec"
-	"RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/codec"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 )
 
 // ProtocolCodec handles RPC protocol framing with protocol.Header.

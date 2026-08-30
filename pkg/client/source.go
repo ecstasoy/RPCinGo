@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"sync"
 
-	"RPCinGo/pkg/loadbalancer"
-	"RPCinGo/pkg/pool"
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/registry"
+	"github.com/ecstasoy/RPCinGo/pkg/loadbalancer"
+	"github.com/ecstasoy/RPCinGo/pkg/pool"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/registry"
 )
 
 // connSource is the seam between Client.Call and the two ways a connection is

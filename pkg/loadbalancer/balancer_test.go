@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"RPCinGo/pkg/registry"
+	"github.com/ecstasoy/RPCinGo/pkg/registry"
 )
 
 func createTestInstances() []*registry.ServiceInstance {

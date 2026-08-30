@@ -7,7 +7,7 @@ import (
 	"io"
 	"sync"
 
-	"RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 )
 
 // Codec encodes and decodes request or response payloads without transport

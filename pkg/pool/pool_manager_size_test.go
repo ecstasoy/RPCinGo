@@ -3,7 +3,7 @@ package pool
 import (
 	"testing"
 
-	"RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 )
 
 // TestManagerPoolSizeHonored verifies that WithManagerPoolSize overrides the

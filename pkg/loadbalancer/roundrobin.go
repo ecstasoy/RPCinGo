@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"RPCinGo/pkg/registry"
+	"github.com/ecstasoy/RPCinGo/pkg/registry"
 )
 
 // RoundRobinBalancer rotates through instances in order.

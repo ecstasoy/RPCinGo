@@ -6,7 +6,7 @@ import (
 	"context"
 	"time"
 
-	"RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 )
 
 // Retry returns an interceptor that retries the RPC call on transient failures.

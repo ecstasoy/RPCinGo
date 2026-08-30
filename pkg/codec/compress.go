@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"io"
 
-	"RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 )
 
 // Compressor compresses and decompresses raw payload bytes.

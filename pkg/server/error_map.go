@@ -1,10 +1,10 @@
 package server
 
 import (
-	"RPCinGo/pkg/circuitbreaker"
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/ratelimiter"
-	"RPCinGo/pkg/registry"
+	"github.com/ecstasoy/RPCinGo/pkg/circuitbreaker"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/ratelimiter"
+	"github.com/ecstasoy/RPCinGo/pkg/registry"
 	"context"
 	"errors"
 	"fmt"

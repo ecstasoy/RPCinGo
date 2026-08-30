@@ -10,8 +10,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/transport"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/transport"
 )
 
 // pendingCall represents a pending request awaiting a response or error.

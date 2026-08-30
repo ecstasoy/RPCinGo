@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/transport"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/transport"
 )
 
 // TestServer_ListenAndClose 测试监听和关闭

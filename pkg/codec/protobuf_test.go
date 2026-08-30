@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 )
 
 // TestProtobufCodecName 测试名称

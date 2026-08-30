@@ -1,4 +1,4 @@
-module RPCinGo
+module github.com/ecstasoy/RPCinGo
 
 go 1.25.0
 

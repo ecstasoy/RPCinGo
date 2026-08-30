@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"RPCinGo/pkg/client"
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/registry/memory"
+	"github.com/ecstasoy/RPCinGo/pkg/client"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/registry/memory"
 )
 
 func waitForAddr(t *testing.T, s *Server, timeout time.Duration) string {

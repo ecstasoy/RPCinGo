@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"RPCinGo/pkg/registry"
+	"github.com/ecstasoy/RPCinGo/pkg/registry"
 )
 
 // requireEtcd skips the test unless a real etcd is listening. NewEtcdRegistry

@@ -6,11 +6,11 @@ import (
 	"os"
 	"time"
 
-	"RPCinGo/examples/microservice/api/user"
-	"RPCinGo/pkg/client"
-	"RPCinGo/pkg/loadbalancer"
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/registry/etcd"
+	"github.com/ecstasoy/RPCinGo/examples/microservice/api/user"
+	"github.com/ecstasoy/RPCinGo/pkg/client"
+	"github.com/ecstasoy/RPCinGo/pkg/loadbalancer"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/registry/etcd"
 )
 
 func main() {

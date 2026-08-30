@@ -20,8 +20,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"RPCinGo/examples/proto/calculator"
-	"RPCinGo/pkg/client"
+	"github.com/ecstasoy/RPCinGo/examples/proto/calculator"
+	"github.com/ecstasoy/RPCinGo/pkg/client"
 )
 
 func main() {

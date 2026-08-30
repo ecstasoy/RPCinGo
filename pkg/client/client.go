@@ -1,17 +1,17 @@
 package client
 
 import (
-	"RPCinGo/pkg/circuitbreaker"
+	"github.com/ecstasoy/RPCinGo/pkg/circuitbreaker"
 	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
 
-	"RPCinGo/pkg/codec"
-	"RPCinGo/pkg/interceptor"
-	"RPCinGo/pkg/pool"
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/registry"
+	"github.com/ecstasoy/RPCinGo/pkg/codec"
+	"github.com/ecstasoy/RPCinGo/pkg/interceptor"
+	"github.com/ecstasoy/RPCinGo/pkg/pool"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/registry"
 
 	"google.golang.org/protobuf/proto"
 )

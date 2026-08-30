@@ -8,10 +8,10 @@ import (
 	"syscall"
 	"time"
 
-	"RPCinGo/examples/microservice/api/user"
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/registry/etcd"
-	"RPCinGo/pkg/server"
+	"github.com/ecstasoy/RPCinGo/examples/microservice/api/user"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/registry/etcd"
+	"github.com/ecstasoy/RPCinGo/pkg/server"
 )
 
 type UserService struct {

@@ -3,8 +3,8 @@
 package interceptor
 
 import (
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/ratelimiter"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/ratelimiter"
 	"context"
 )
 

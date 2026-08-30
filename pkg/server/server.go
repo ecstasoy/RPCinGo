@@ -10,13 +10,13 @@ import (
 	"sync"
 	"time"
 
-	"RPCinGo/pkg/codec"
-	"RPCinGo/pkg/interceptor"
-	"RPCinGo/pkg/logger"
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/registry"
-	"RPCinGo/pkg/transport"
-	"RPCinGo/pkg/transport/tcp"
+	"github.com/ecstasoy/RPCinGo/pkg/codec"
+	"github.com/ecstasoy/RPCinGo/pkg/interceptor"
+	"github.com/ecstasoy/RPCinGo/pkg/logger"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/registry"
+	"github.com/ecstasoy/RPCinGo/pkg/transport"
+	"github.com/ecstasoy/RPCinGo/pkg/transport/tcp"
 )
 
 // Server is the high-level RPC server that combines service registration,

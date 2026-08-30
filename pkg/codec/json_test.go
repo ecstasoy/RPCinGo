@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 )
 
 // 测试用的结构体

@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"RPCinGo/examples/proto/calculator"
-	"RPCinGo/pkg/client"
-	"RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/examples/proto/calculator"
+	"github.com/ecstasoy/RPCinGo/pkg/client"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 
 	"google.golang.org/protobuf/proto"
 )

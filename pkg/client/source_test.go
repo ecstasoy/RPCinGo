@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"RPCinGo/pkg/loadbalancer"
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/registry"
-	"RPCinGo/pkg/registry/memory"
+	"github.com/ecstasoy/RPCinGo/pkg/loadbalancer"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/registry"
+	"github.com/ecstasoy/RPCinGo/pkg/registry/memory"
 )
 
 // recordingBalancer is a fake BalancerWithOptions that records which selection

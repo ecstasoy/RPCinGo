@@ -1,9 +1,9 @@
 package e2e
 
 import (
-	"RPCinGo/pkg/interceptor"
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/ratelimiter"
+	"github.com/ecstasoy/RPCinGo/pkg/interceptor"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/ratelimiter"
 	"context"
 	"encoding/json"
 	"errors"
@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"RPCinGo/pkg/client"
-	"RPCinGo/pkg/registry/memory"
-	"RPCinGo/pkg/server"
+	"github.com/ecstasoy/RPCinGo/pkg/client"
+	"github.com/ecstasoy/RPCinGo/pkg/registry/memory"
+	"github.com/ecstasoy/RPCinGo/pkg/server"
 )
 
 func TestE2E_ServiceDiscovery(t *testing.T) {

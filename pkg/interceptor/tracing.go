@@ -1,8 +1,8 @@
 package interceptor
 
 import (
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/tracing"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/tracing"
 	"context"
 
 	"go.opentelemetry.io/otel"

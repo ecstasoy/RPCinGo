@@ -10,8 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/transport"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/transport"
 )
 
 // Server implements the TCP server transport for framed RPC requests.

@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/transport/tcp"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/transport/tcp"
 )
 
 func startMockServer(tb testing.TB, handler func(req *protocol.Request) *protocol.Response) (string, func(), error) {

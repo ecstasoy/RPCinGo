@@ -3,7 +3,7 @@
 package etcd
 
 import (
-	"RPCinGo/pkg/registry"
+	"github.com/ecstasoy/RPCinGo/pkg/registry"
 	"context"
 	"encoding/json"
 	"fmt"

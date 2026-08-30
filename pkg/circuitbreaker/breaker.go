@@ -3,8 +3,8 @@
 package circuitbreaker
 
 import (
-	"RPCinGo/pkg/interceptor"
-	"RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/interceptor"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 	"context"
 	"errors"
 	"fmt"

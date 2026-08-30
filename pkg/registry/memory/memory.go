@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"RPCinGo/pkg/registry"
+	"github.com/ecstasoy/RPCinGo/pkg/registry"
 )
 
 // Registry is an in-memory implementation of registry.Registry and

@@ -6,7 +6,7 @@ import (
 	"context"
 	"sync"
 
-	"RPCinGo/pkg/registry"
+	"github.com/ecstasoy/RPCinGo/pkg/registry"
 )
 
 // WeightedRoundRobin repeats instances according to their weight and rotates

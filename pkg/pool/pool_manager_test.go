@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 )
 
 func TestPoolManager_GetConnection(t *testing.T) {

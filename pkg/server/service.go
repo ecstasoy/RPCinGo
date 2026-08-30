@@ -3,8 +3,8 @@
 package server
 
 import (
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/registry"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/registry"
 	"context"
 	"encoding/json"
 	"fmt"
