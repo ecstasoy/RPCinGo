@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"sync"
 
-	"RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 )
 
 // PoolManager lazily creates and caches one ConnectionPool per endpoint.

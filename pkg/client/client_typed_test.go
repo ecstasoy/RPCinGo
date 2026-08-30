@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"RPCinGo/examples/proto/calculator"
-	"RPCinGo/pkg/server"
+	"github.com/ecstasoy/RPCinGo/examples/proto/calculator"
+	"github.com/ecstasoy/RPCinGo/pkg/server"
 )
 
 func waitForAddrClient(t *testing.T, s *server.Server, timeout time.Duration) string {

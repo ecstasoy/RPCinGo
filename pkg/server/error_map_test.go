@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 )
 
 // TestErrorTableRoundTrip verifies that every sentinel in errorTable encodes to

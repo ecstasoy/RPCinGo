@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	"RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 )
 
 // TestProtocolCodec_EncodeDecodeRequest 测试请求编解码

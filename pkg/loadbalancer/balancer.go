@@ -6,7 +6,7 @@ import (
 	"context"
 	"errors"
 
-	"RPCinGo/pkg/registry"
+	"github.com/ecstasoy/RPCinGo/pkg/registry"
 )
 
 // ErrNoInstances and ErrInvalidAlgorithm are shared by load balancer

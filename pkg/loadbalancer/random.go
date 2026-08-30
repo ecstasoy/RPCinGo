@@ -7,7 +7,7 @@ import (
 	"math/rand"
 	"time"
 
-	"RPCinGo/pkg/registry"
+	"github.com/ecstasoy/RPCinGo/pkg/registry"
 )
 
 // Random picks a uniformly random instance from the available set.

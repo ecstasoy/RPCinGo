@@ -7,9 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"RPCinGo/pkg/client"
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/registry/memory"
+	"github.com/ecstasoy/RPCinGo/pkg/client"
+	"github.com/ecstasoy/RPCinGo/pkg/logger"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/registry/memory"
 )
 
 func waitForAddr(t *testing.T, s *Server, timeout time.Duration) string {
@@ -172,6 +173,34 @@ func TestServer_ServiceNotFound(t *testing.T) {
 	}
 
 	t.Logf("✅ Correctly returned error: %v", err)
+}
+
+// recordingLogger is a minimal logger.Logger used to prove identity: it lets
+// a test check that a specific logger instance reached a lower layer, rather
+// than just that "some non-nil logger" is there.
+type recordingLogger struct{}
+
+func (recordingLogger) Debug(_ string, _ ...any)      {}
+func (recordingLogger) Info(_ string, _ ...any)       {}
+func (recordingLogger) Warn(_ string, _ ...any)       {}
+func (recordingLogger) Error(_ string, _ ...any)      {}
+func (l recordingLogger) With(_ ...any) logger.Logger { return l }
+
+// TestNewServer_WiresLoggerToTransport guards against the logger passed to
+// server.WithLogger being resolved (for the server's own log field) but never
+// forwarded to the transport options, which is what actually backs
+// s.opts.Logger in the TCP accept loop. Comparing by identity (pointer
+// equality of the interface value) proves the exact instance we configured
+// reached the transport, not merely that some default got substituted in.
+func TestNewServer_WiresLoggerToTransport(t *testing.T) {
+	want := &recordingLogger{}
+
+	srv := NewServer(WithAddress("127.0.0.1:0"), WithLogger(want))
+
+	got := srv.Transport.Options().Logger
+	if got != logger.Logger(want) {
+		t.Fatalf("transport logger = %#v, want the exact instance passed to WithLogger (%#v)", got, want)
+	}
 }
 
 func TestServer_WithRegistry(t *testing.T) {

@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"RPCinGo/pkg/registry"
+	"github.com/ecstasoy/RPCinGo/pkg/registry"
 )
 
 const defaultVirtualNodes = 150

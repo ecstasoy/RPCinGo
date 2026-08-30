@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"io"
 
-	"RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 )
 
 // Compressor compresses and decompresses raw payload bytes.
@@ -67,7 +67,7 @@ func (c *GzipCompressor) Compress(data []byte) ([]byte, error) {
 	}
 
 	if _, err := writer.Write(data); err != nil {
-		writer.Close()
+		_ = writer.Close()
 		return nil, fmt.Errorf("gzip write failed: %w", err)
 	}
 
@@ -84,7 +84,7 @@ func (c *GzipCompressor) Decompress(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create gzip reader failed: %w", err)
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 
 	decompressed, err := io.ReadAll(reader)
 	if err != nil {

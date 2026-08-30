@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/transport/tcp"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/transport/tcp"
 )
 
-func startMockServer(tb testing.TB, handler func(req *protocol.Request) *protocol.Response) (string, func(), error) {
+func startMockServer(handler func(req *protocol.Request) *protocol.Response) (string, func(), error) {
 	// 监听随机端口
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -43,21 +43,14 @@ func startMockServer(tb testing.TB, handler func(req *protocol.Request) *protoco
 				// 读取请求
 				_, req, err := codec.ReadRequest(conn)
 				if err != nil {
-					tb.Logf("读取请求失败: %v", err)
 					return
-				} else {
-					tb.Logf("收到请求 ID=%d", req.ID)
 				}
 
 				// 处理请求
 				resp := handler(req)
 
 				// 发送响应
-				if err := codec.WriteResponse(conn, resp); err != nil {
-					tb.Logf("发送响应失败: %v", err)
-				} else {
-					tb.Logf("处理请求 ID=%d 成功", req.ID)
-				}
+				codec.WriteResponse(conn, resp)
 			}(conn)
 		}
 	}()
@@ -68,7 +61,7 @@ func startMockServer(tb testing.TB, handler func(req *protocol.Request) *protoco
 // TestConnectionPool_Basic 测试基础功能
 func TestConnectionPool_Basic(t *testing.T) {
 	// 启动测试服务器
-	addr, stop, err := startMockServer(t, func(req *protocol.Request) *protocol.Response {
+	addr, stop, err := startMockServer(func(req *protocol.Request) *protocol.Response {
 		return protocol.NewSuccessResponse(req.ID, "pong")
 	})
 	if err != nil {
@@ -136,7 +129,7 @@ func TestConnectionPool_Basic(t *testing.T) {
 
 // TestConnectionPool_Concurrent 测试并发获取
 func TestConnectionPool_Concurrent(t *testing.T) {
-	addr, stop, _ := startMockServer(t, func(req *protocol.Request) *protocol.Response {
+	addr, stop, _ := startMockServer(func(req *protocol.Request) *protocol.Response {
 		return protocol.NewSuccessResponse(req.ID, "ok")
 	})
 	defer stop()
@@ -203,7 +196,7 @@ func TestConnectionPool_Concurrent(t *testing.T) {
 
 // TestConnectionPool_AutoCleanup 测试自动清理
 func TestConnectionPool_AutoCleanup(t *testing.T) {
-	addr, stop, _ := startMockServer(t, func(req *protocol.Request) *protocol.Response {
+	addr, stop, _ := startMockServer(func(req *protocol.Request) *protocol.Response {
 		return protocol.NewSuccessResponse(req.ID, "ok")
 	})
 	defer stop()
@@ -246,7 +239,7 @@ func TestConnectionPool_AutoCleanup(t *testing.T) {
 
 // TestConnectionPool_MaxLifetime 测试最大生存时间
 func TestConnectionPool_MaxLifetime(t *testing.T) {
-	addr, stop, _ := startMockServer(t, func(req *protocol.Request) *protocol.Response {
+	addr, stop, _ := startMockServer(func(req *protocol.Request) *protocol.Response {
 		return protocol.NewSuccessResponse(req.ID, "ok")
 	})
 	defer stop()
@@ -287,7 +280,7 @@ func TestConnectionPool_MaxLifetime(t *testing.T) {
 
 // BenchmarkConnectionPool_WithVsWithout 对比有池vs无池
 func BenchmarkConnectionPool_WithVsWithout(b *testing.B) {
-	addr, stop, _ := startMockServer(b, func(req *protocol.Request) *protocol.Response {
+	addr, stop, _ := startMockServer(func(req *protocol.Request) *protocol.Response {
 		return protocol.NewSuccessResponse(req.ID, "ok")
 	})
 	defer stop()
@@ -326,7 +319,7 @@ func BenchmarkConnectionPool_WithVsWithout(b *testing.B) {
 
 // BenchmarkConnectionPool_Concurrent 并发性能测试
 func BenchmarkConnectionPool_Concurrent(b *testing.B) {
-	addr, stop, _ := startMockServer(b, func(req *protocol.Request) *protocol.Response {
+	addr, stop, _ := startMockServer(func(req *protocol.Request) *protocol.Response {
 		return protocol.NewSuccessResponse(req.ID, "ok")
 	})
 	defer stop()
@@ -468,7 +461,7 @@ func TestConnectionPool_Validation(t *testing.T) {
 
 // TestConnectionPool_MaxConnections 测试最大连接数限制
 func TestConnectionPool_MaxConnections(t *testing.T) {
-	addr, stop, _ := startMockServer(t, func(req *protocol.Request) *protocol.Response {
+	addr, stop, _ := startMockServer(func(req *protocol.Request) *protocol.Response {
 		// 慢处理（保持连接占用）
 		time.Sleep(200 * time.Millisecond)
 		return protocol.NewSuccessResponse(req.ID, "ok")
@@ -520,7 +513,7 @@ func TestConnectionPool_MaxConnections(t *testing.T) {
 
 // TestConnectionPool_Stats 测试统计功能
 func TestConnectionPool_Stats(t *testing.T) {
-	addr, stop, _ := startMockServer(t, func(req *protocol.Request) *protocol.Response {
+	addr, stop, _ := startMockServer(func(req *protocol.Request) *protocol.Response {
 		return protocol.NewSuccessResponse(req.ID, "ok")
 	})
 	defer stop()
@@ -557,7 +550,7 @@ func TestConnectionPool_Stats(t *testing.T) {
 
 // TestConnectionPool_Cleanup 测试清理机制
 func TestConnectionPool_Cleanup(t *testing.T) {
-	addr, stop, _ := startMockServer(t, func(req *protocol.Request) *protocol.Response {
+	addr, stop, _ := startMockServer(func(req *protocol.Request) *protocol.Response {
 		return protocol.NewSuccessResponse(req.ID, "ok")
 	})
 	defer stop()

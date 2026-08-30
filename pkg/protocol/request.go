@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"RPCinGo/pkg/protocol/pb"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol/pb"
 )
 
 // PayloadCodec aliases the protobuf enum used to describe how typed request

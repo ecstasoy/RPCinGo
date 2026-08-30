@@ -1,6 +1,10 @@
 package transport
 
-import "time"
+import (
+	"time"
+
+	"github.com/ecstasoy/RPCinGo/pkg/logger"
+)
 
 // ClientOptions groups transport-level client tuning knobs. Concrete transport
 // implementations may honor only the subset they support.
@@ -97,6 +101,7 @@ type ServerOptions struct {
 	WriteBufferSize       int
 	MaxRequestBodySize    int64
 	MaxConnections        int
+	Logger                logger.Logger // never nil; defaults to logger.Nop()
 }
 
 // DefaultServerOptions returns the default transport server settings.
@@ -111,6 +116,7 @@ func DefaultServerOptions() *ServerOptions {
 		WriteBufferSize:       4 * 1024,
 		MaxRequestBodySize:    10 * 1024 * 1024,
 		MaxConnections:        10000,
+		Logger:                logger.Nop(),
 	}
 }
 
@@ -161,5 +167,17 @@ func WithServerBufferSize(readSize, writeSize int) ServerOption {
 func WithMaxRequestBodySize(size int64) ServerOption {
 	return func(opts *ServerOptions) {
 		opts.MaxRequestBodySize = size
+	}
+}
+
+// WithLogger installs the logger the transport server uses for events that
+// have no caller to return an error to, such as a connection handler that
+// fails after the accept loop has moved on. Passing nil is a no-op, so the
+// server never has to nil-check.
+func WithLogger(l logger.Logger) ServerOption {
+	return func(o *ServerOptions) {
+		if l != nil {
+			o.Logger = l
+		}
 	}
 }

@@ -1,0 +1,12 @@
+version: 2
+updates:
+  # mini-rpc is a separate module kept out of CI on purpose, so it is not
+  # listed here either.
+  - package-ecosystem: gomod
+    directory: "/"
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly

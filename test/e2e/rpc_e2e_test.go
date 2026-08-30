@@ -1,9 +1,6 @@
 package e2e
 
 import (
-	"RPCinGo/pkg/interceptor"
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/ratelimiter"
 	"context"
 	"encoding/json"
 	"errors"
@@ -11,9 +8,13 @@ import (
 	"testing"
 	"time"
 
-	"RPCinGo/pkg/client"
-	"RPCinGo/pkg/registry/memory"
-	"RPCinGo/pkg/server"
+	"github.com/ecstasoy/RPCinGo/pkg/interceptor"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/ratelimiter"
+
+	"github.com/ecstasoy/RPCinGo/pkg/client"
+	"github.com/ecstasoy/RPCinGo/pkg/registry/memory"
+	"github.com/ecstasoy/RPCinGo/pkg/server"
 )
 
 func TestE2E_ServiceDiscovery(t *testing.T) {
@@ -104,7 +105,7 @@ func TestE2E_MultipleInstances(t *testing.T) {
 	servers := make([]*server.Server, 3)
 	for i := 0; i < 3; i++ {
 		srv := server.NewServer(
-			server.WithAddress(fmt.Sprintf("127.0.0.1:0")),
+			server.WithAddress("127.0.0.1:0"),
 			server.WithRegistry("Calculator", "v1.0.0", memReg),
 		)
 

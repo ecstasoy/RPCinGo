@@ -20,8 +20,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"RPCinGo/examples/proto/calculator"
-	"RPCinGo/pkg/client"
+	"github.com/ecstasoy/RPCinGo/examples/proto/calculator"
+	"github.com/ecstasoy/RPCinGo/pkg/client"
 )
 
 func main() {
@@ -55,7 +55,7 @@ func main() {
 				atomic.AddInt64(&totalErrs, 1)
 				return
 			}
-			defer cli.Close()
+			defer func() { _ = cli.Close() }()
 
 			req := &calculator.AddRequest{A: 3, B: 4}
 			resp := &calculator.AddResponse{}

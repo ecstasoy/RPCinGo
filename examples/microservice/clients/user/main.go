@@ -6,11 +6,11 @@ import (
 	"os"
 	"time"
 
-	"RPCinGo/examples/microservice/api/user"
-	"RPCinGo/pkg/client"
-	"RPCinGo/pkg/loadbalancer"
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/registry/etcd"
+	"github.com/ecstasoy/RPCinGo/examples/microservice/api/user"
+	"github.com/ecstasoy/RPCinGo/pkg/client"
+	"github.com/ecstasoy/RPCinGo/pkg/loadbalancer"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/registry/etcd"
 )
 
 func main() {
@@ -25,7 +25,7 @@ func main() {
 		fmt.Println("You can start etcd with: docker run -d -p 2379:2379 quay.io/coreos/etcd:v3.5.0 etcd --advertise-client-urls=http://localhost:2379 --listen-client-urls=http://0.0.0.0:2379")
 		os.Exit(1)
 	}
-	defer etcdDisc.Close()
+	defer func() { _ = etcdDisc.Close() }()
 
 	fmt.Println("=== UserService Client Demo ===")
 	fmt.Println()
@@ -36,7 +36,7 @@ func main() {
 	fmt.Println()
 
 	fmt.Print("Press Enter to continue...")
-	fmt.Scanln()
+	_, _ = fmt.Scanln()
 
 	cli, err := client.NewDiscoveryClient(
 		client.WithDiscovery(etcdDisc),
@@ -49,7 +49,7 @@ func main() {
 		fmt.Printf("Create client failed: %v\n", err)
 		os.Exit(1)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

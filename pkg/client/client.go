@@ -1,17 +1,18 @@
 package client
 
 import (
-	"RPCinGo/pkg/circuitbreaker"
 	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
 
-	"RPCinGo/pkg/codec"
-	"RPCinGo/pkg/interceptor"
-	"RPCinGo/pkg/pool"
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/registry"
+	"github.com/ecstasoy/RPCinGo/pkg/circuitbreaker"
+
+	"github.com/ecstasoy/RPCinGo/pkg/codec"
+	"github.com/ecstasoy/RPCinGo/pkg/interceptor"
+	"github.com/ecstasoy/RPCinGo/pkg/pool"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/registry"
 
 	"google.golang.org/protobuf/proto"
 )
@@ -153,7 +154,7 @@ func (c *Client) callOnce(ctx context.Context, req *protocol.Request) (*protocol
 
 	resp, err := conn.Client.SendRequest(ctx, req)
 	if err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil, fmt.Errorf("send: %w", err)
 	}
 	conn.Release()

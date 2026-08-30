@@ -1,8 +1,6 @@
 package main
 
 import (
-	"RPCinGo/pkg/interceptor"
-	"RPCinGo/pkg/tracing"
 	"bufio"
 	"context"
 	"fmt"
@@ -12,8 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"RPCinGo/examples/proto/calculator"
-	"RPCinGo/pkg/client"
+	"github.com/ecstasoy/RPCinGo/pkg/interceptor"
+	"github.com/ecstasoy/RPCinGo/pkg/tracing"
+
+	"github.com/ecstasoy/RPCinGo/examples/proto/calculator"
+	"github.com/ecstasoy/RPCinGo/pkg/client"
 )
 
 func main() {
@@ -22,7 +23,7 @@ func main() {
 		fmt.Printf("init tracer failed: %v\n", err)
 		os.Exit(1)
 	}
-	defer shutdown(context.Background())
+	defer func() { _ = shutdown(context.Background()) }()
 
 	cli, err := client.NewClient("127.0.0.1:8080")
 	if err != nil {
@@ -30,7 +31,7 @@ func main() {
 		os.Exit(1)
 	}
 	cli.Use(interceptor.TracingClient(), interceptor.Logging(nil))
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 
 	fmt.Println("=== RPCinGo Calculator ===")
 	fmt.Println("支持运算: add, sub, mul, div")

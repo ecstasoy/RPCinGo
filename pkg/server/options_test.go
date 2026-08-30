@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"RPCinGo/pkg/transport"
+	"github.com/ecstasoy/RPCinGo/pkg/transport"
 )
 
 // TestHandlerTimeoutReachesTransport verifies that the server-level

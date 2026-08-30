@@ -8,10 +8,10 @@ import (
 	"syscall"
 	"time"
 
-	"RPCinGo/examples/microservice/api/user"
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/registry/etcd"
-	"RPCinGo/pkg/server"
+	"github.com/ecstasoy/RPCinGo/examples/microservice/api/user"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/registry/etcd"
+	"github.com/ecstasoy/RPCinGo/pkg/server"
 )
 
 type UserService struct {
@@ -84,7 +84,7 @@ func main() {
 		fmt.Println("You can start etcd with: docker run -d -p 2379:2379 quay.io/coreos/etcd:v3.5.0 etcd --advertise-client-urls=http://localhost:2379 --listen-client-urls=http://0.0.0.0:2379")
 		os.Exit(1)
 	}
-	defer etcdReg.Close()
+	defer func() { _ = etcdReg.Close() }()
 
 	srv := server.NewServer(
 		server.WithAddress("127.0.0.1:0"),
@@ -129,6 +129,6 @@ func main() {
 
 	<-sigChan
 	fmt.Println("\nShutting down server...")
-	srv.Stop()
+	_ = srv.Stop()
 	fmt.Println("Server stopped")
 }

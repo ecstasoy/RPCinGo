@@ -5,12 +5,12 @@ package server
 import (
 	"time"
 
-	"RPCinGo/pkg/interceptor"
-	"RPCinGo/pkg/logger"
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/ratelimiter"
-	"RPCinGo/pkg/registry"
-	"RPCinGo/pkg/transport"
+	"github.com/ecstasoy/RPCinGo/pkg/interceptor"
+	"github.com/ecstasoy/RPCinGo/pkg/logger"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/ratelimiter"
+	"github.com/ecstasoy/RPCinGo/pkg/registry"
+	"github.com/ecstasoy/RPCinGo/pkg/transport"
 )
 
 type serverOptions struct {

@@ -9,10 +9,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"RPCinGo/pkg/logger"
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/transport"
-	"RPCinGo/pkg/transport/tcp"
+	"github.com/ecstasoy/RPCinGo/pkg/logger"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/transport"
+	"github.com/ecstasoy/RPCinGo/pkg/transport/tcp"
 )
 
 // PoolOptions configures a ConnectionPool.
@@ -640,7 +640,7 @@ func (p *ConnectionPool) GetWithContext(ctx context.Context) (*PooledConnection,
 			return conn, nil
 		}
 
-		conn.Close()
+		_ = conn.Close()
 		atomic.AddInt64(&p.stats.closeCount, 1)
 
 		p.mu.Lock()
@@ -686,7 +686,7 @@ func (p *ConnectionPool) createNewConnectionWithContext(ctx context.Context) (*P
 				return conn, nil
 			}
 
-			conn.Close()
+			_ = conn.Close()
 			atomic.AddInt64(&p.stats.closeCount, 1)
 
 			p.mu.Lock()
@@ -725,14 +725,14 @@ func (p *ConnectionPool) Put(conn *PooledConnection) {
 	p.mu.RLock()
 	if p.closed {
 		p.mu.RUnlock()
-		conn.Close()
+		_ = conn.Close()
 		atomic.AddInt64(&p.stats.closeCount, 1)
 		return
 	}
 	p.mu.RUnlock()
 
 	if !conn.IsHealthy() || conn.IsExpired(p.opts.MaxIdleTime, p.opts.MaxLifetime) {
-		conn.Close()
+		_ = conn.Close()
 		atomic.AddInt64(&p.stats.closeCount, 1)
 
 		p.mu.Lock()
@@ -744,7 +744,7 @@ func (p *ConnectionPool) Put(conn *PooledConnection) {
 	select {
 	case p.pool <- conn:
 	default:
-		conn.Close()
+		_ = conn.Close()
 		atomic.AddInt64(&p.stats.closeCount, 1)
 
 		p.mu.Lock()
@@ -780,7 +780,7 @@ check:
 	keepCount := 0
 	for _, conn := range toCheck {
 		if conn.IsExpired(p.opts.MaxIdleTime, p.opts.MaxLifetime) {
-			conn.Close()
+			_ = conn.Close()
 			atomic.AddInt64(&p.stats.closeCount, 1)
 
 			p.mu.Lock()
@@ -839,7 +839,7 @@ check:
 		if conn.IsHealthy() {
 			p.pool <- conn
 		} else {
-			conn.Close()
+			_ = conn.Close()
 			atomic.AddInt64(&p.stats.closeCount, 1)
 
 			p.mu.Lock()
@@ -866,7 +866,7 @@ func (p *ConnectionPool) Close() error {
 	close(p.pool)
 
 	for conn := range p.pool {
-		conn.Close()
+		_ = conn.Close()
 		atomic.AddInt64(&p.stats.closeCount, 1)
 	}
 

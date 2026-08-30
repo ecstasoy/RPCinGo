@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"RPCinGo/pkg/registry"
+	"github.com/ecstasoy/RPCinGo/pkg/registry"
 )
 
 func createTestInstances() []*registry.ServiceInstance {
@@ -99,7 +99,7 @@ func TestConsistentHash(t *testing.T) {
 
 	var firstPick *registry.ServiceInstance
 	for i := 0; i < 10; i++ {
-		inst, _ := balancer.(BalancerWithOptions).PickWithOptions(
+		inst, _ := balancer.PickWithOptions(
 			context.Background(),
 			instances,
 			&PickOptions{key: key},

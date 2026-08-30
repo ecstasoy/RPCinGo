@@ -3,11 +3,12 @@
 package client
 
 import (
-	"RPCinGo/pkg/circuitbreaker"
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/ratelimiter"
 	"context"
 	"fmt"
+
+	"github.com/ecstasoy/RPCinGo/pkg/circuitbreaker"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/ratelimiter"
 )
 
 func unmapError(resp *protocol.Response) error {

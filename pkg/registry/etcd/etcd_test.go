@@ -3,10 +3,11 @@ package etcd
 import (
 	"context"
 	"net"
+	"os"
 	"testing"
 	"time"
 
-	"RPCinGo/pkg/registry"
+	"github.com/ecstasoy/RPCinGo/pkg/registry"
 )
 
 // requireEtcd skips the test unless a real etcd is listening. NewEtcdRegistry
@@ -14,14 +15,31 @@ import (
 // Watch call is what blocks — long past the point where skipping is possible.
 // Probing the endpoint first is the only guard that actually keeps
 // "go test ./..." usable on a machine without etcd.
+//
+// In CI etcd is supposed to be up, so a skip there means the service container
+// is misconfigured — and a skipped test still reports ok, which would hide it.
+// Setting RPCINGO_REQUIRE_ETCD turns every skip in this file into a failure.
 func requireEtcd(t *testing.T, config *Config) {
 	t.Helper()
 
 	conn, err := net.DialTimeout("tcp", config.Endpoints[0], 200*time.Millisecond)
 	if err != nil {
-		t.Skipf("etcd not available at %s: %v", config.Endpoints[0], err)
+		skipOrFailEtcd(t, "etcd not available at %s: %v", config.Endpoints[0], err)
+		return
 	}
 	_ = conn.Close()
+}
+
+// skipOrFailEtcd skips when etcd is merely absent, and fails when the
+// environment promised one. Every etcd skip in this file goes through here so
+// the guard cannot be bypassed by a new test.
+func skipOrFailEtcd(t *testing.T, format string, args ...any) {
+	t.Helper()
+
+	if os.Getenv("RPCINGO_REQUIRE_ETCD") != "" {
+		t.Fatalf("RPCINGO_REQUIRE_ETCD is set but etcd is unusable: "+format, args...)
+	}
+	t.Skipf(format, args...)
 }
 
 func TestEtcdRegistry_RegisterAndGet(t *testing.T) {
@@ -30,7 +48,7 @@ func TestEtcdRegistry_RegisterAndGet(t *testing.T) {
 
 	reg, err := NewEtcdRegistry(config)
 	if err != nil {
-		t.Skip("etcd not available:", err)
+		skipOrFailEtcd(t, "etcd not available: %v", err)
 		return
 	}
 	defer reg.Close()
@@ -67,7 +85,7 @@ func TestEtcdDiscovery_Watch(t *testing.T) {
 
 	disc, err := NewEtcdDiscovery(config)
 	if err != nil {
-		t.Skip("etcd not available:", err)
+		skipOrFailEtcd(t, "etcd not available: %v", err)
 		return
 	}
 	defer disc.Close()

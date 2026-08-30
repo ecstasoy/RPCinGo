@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 )
 
 // TestReadRequestHonoursHeaderCodec proves the on-wire Codec byte is meaningful:

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"sync"
 
-	"RPCinGo/pkg/loadbalancer"
-	"RPCinGo/pkg/pool"
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/registry"
+	"github.com/ecstasoy/RPCinGo/pkg/loadbalancer"
+	"github.com/ecstasoy/RPCinGo/pkg/pool"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/registry"
 )
 
 // connSource is the seam between Client.Call and the two ways a connection is
@@ -176,7 +176,7 @@ func (s *discoverySource) handleWatchEvent(service string, event *registry.Event
 		}
 		instances = filtered
 
-		s.poolManager.RemovePool(event.Instance.Endpoint())
+		_ = s.poolManager.RemovePool(event.Instance.Endpoint())
 	case registry.EventTypeUpdate:
 		for i, inst := range instances {
 			if inst.ID == event.Instance.ID {

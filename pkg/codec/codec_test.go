@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 )
 
 // TestRegisterAndGet 测试注册和获取

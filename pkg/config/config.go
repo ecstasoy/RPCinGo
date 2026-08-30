@@ -7,10 +7,10 @@ import (
 	"os"
 	"time"
 
-	"RPCinGo/pkg/client"
-	"RPCinGo/pkg/loadbalancer"
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/server"
+	"github.com/ecstasoy/RPCinGo/pkg/client"
+	"github.com/ecstasoy/RPCinGo/pkg/loadbalancer"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/server"
 	"gopkg.in/yaml.v3"
 )
 

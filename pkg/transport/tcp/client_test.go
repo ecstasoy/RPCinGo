@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 )
 
 // startMockServer 启动一个 Mock 服务端（用于测试）

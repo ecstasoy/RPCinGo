@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"io"
 
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/protocol/pb"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol/pb"
 
 	"google.golang.org/protobuf/proto"
 )

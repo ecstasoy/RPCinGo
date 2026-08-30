@@ -6,9 +6,9 @@ import (
 	"context"
 	"time"
 
-	"RPCinGo/pkg/logger"
-	"RPCinGo/pkg/protocol"
-	"RPCinGo/pkg/tracing"
+	"github.com/ecstasoy/RPCinGo/pkg/logger"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
+	"github.com/ecstasoy/RPCinGo/pkg/tracing"
 )
 
 // Logging returns an interceptor that logs request outcome, duration, and trace

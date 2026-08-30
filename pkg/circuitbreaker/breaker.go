@@ -3,13 +3,14 @@
 package circuitbreaker
 
 import (
-	"RPCinGo/pkg/interceptor"
-	"RPCinGo/pkg/protocol"
 	"context"
 	"errors"
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/ecstasoy/RPCinGo/pkg/interceptor"
+	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 )
 
 // ErrCircuitOpen and ErrTooManyRequests are returned when the breaker rejects a
