@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ecstasoy/RPCinGo/pkg/logger"
 	"github.com/ecstasoy/RPCinGo/pkg/protocol"
 	"github.com/ecstasoy/RPCinGo/pkg/transport"
 )
@@ -285,4 +286,33 @@ func TestServer_Timeout(t *testing.T) {
 	}
 
 	t.Logf("✅ 超时测试通过: %v", err)
+}
+
+// capturingLogger exists only so the tests below have a logger identity to
+// compare against; they assert option plumbing, not log content.
+type capturingLogger struct{}
+
+func (c *capturingLogger) Debug(_ string, _ ...any)    {}
+func (c *capturingLogger) Info(_ string, _ ...any)     {}
+func (c *capturingLogger) Warn(_ string, _ ...any)     {}
+func (c *capturingLogger) Error(_ string, _ ...any)    {}
+func (c *capturingLogger) With(_ ...any) logger.Logger { return c }
+
+func TestServerOptionsCarryLogger(t *testing.T) {
+	capLog := &capturingLogger{}
+	opts := transport.DefaultServerOptions()
+	transport.WithLogger(capLog)(opts)
+
+	if opts.Logger != capLog {
+		t.Fatalf("WithLogger did not install the logger")
+	}
+}
+
+func TestDefaultServerOptionsLoggerIsNonNil(t *testing.T) {
+	opts := transport.DefaultServerOptions()
+	if opts.Logger == nil {
+		t.Fatal("DefaultServerOptions must supply a non-nil logger so the accept loop can log without a nil check")
+	}
+	// 必须可安全调用
+	opts.Logger.Error("smoke")
 }

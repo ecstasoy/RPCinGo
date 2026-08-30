@@ -155,7 +155,13 @@ func (s *Server) Serve(ctx context.Context, handler transport.Handler) error {
 		atomic.AddInt64(&s.totalConnections, 1)
 
 		s.wg.Add(1)
-		go s.handleConnection(ctx, conn)
+		go func(conn net.Conn) {
+			if err := s.handleConnection(ctx, conn); err != nil {
+				s.opts.Logger.Error("connection handler failed",
+					"remote", conn.RemoteAddr().String(),
+					"err", err)
+			}
+		}(conn)
 	}
 }
 
